@@ -79,9 +79,6 @@ where
         }
     }
 
-    // Make sure this won't panic..
-    println!("num_string = {}", num_string);
-
     let num_val = num_string.parse::<f64>().unwrap();
     return Token::Number(num_val);
 }
@@ -134,7 +131,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tok_number_on_integer() {
+    fn test_tok_number_valid_integer() {
         let input = "23456789".as_bytes();
         let buf: [u8; 1] = ['1' as u8];
         let result = tok_number(buf, input);
@@ -146,7 +143,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tok_number_on_decimal() {
+    fn test_tok_number_valid_decimal() {
         let input = "23456789.3798901".as_bytes();
         let buf: [u8; 1] = ['1' as u8];
         let result = tok_number(buf, input);
@@ -155,5 +152,13 @@ mod tests {
             Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }")]
+    fn test_tok_number_too_many_decimal_points() {
+        let input = "23456789.37989.01".as_bytes();
+        let buf: [u8; 1] = ['1' as u8];
+        let result = tok_number(buf, input);
     }
 }
