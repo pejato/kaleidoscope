@@ -155,10 +155,24 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }")]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
+    )]
     fn test_tok_number_too_many_decimal_points() {
         let input = "23456789.37989.01".as_bytes();
         let buf: [u8; 1] = ['1' as u8];
         let result = tok_number(buf, input);
+    }
+
+    #[test]
+    fn test_tok_valid_def() {
+        let input = "ef".as_bytes();
+        let buf: [u8; 1] = ['d' as u8];
+        let result = tok_def_extern_or_ident(buf, input);
+
+        match result {
+            Token::Def => (),
+            _ => assert!(false),
+        }
     }
 }
