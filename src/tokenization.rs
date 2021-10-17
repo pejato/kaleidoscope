@@ -1,6 +1,6 @@
 use std::{io::Read, string::String};
 
-// TODO: Operators?
+#[derive(Debug)]
 enum Token {
     EOF,
     Def,
@@ -19,7 +19,7 @@ fn is_newline(c: u8) -> bool {
 }
 
 // TODO: Look at actual error type in reader.read
-fn get_token<T>(mut reader: T) -> Token
+fn get_token<T>(reader: &mut T) -> Token
 where
     T: Read,
 {
@@ -54,14 +54,15 @@ where
     }
 }
 
-fn tok_number<T>(mut char: [u8; 1], mut reader: T) -> Token
+fn tok_number<T>(mut char: [u8; 1], reader: &mut T) -> Token
 where
     T: Read,
 {
     let mut saw_decimal = is_decimal(char[0]);
-    let mut num_string = (char[0] as char).to_string();
+    let mut num_string = String::new();
 
     loop {
+        num_string.push(char[0] as char);
         let n = reader.read(&mut char).unwrap();
         if n == 0 {
             break;
@@ -72,7 +73,6 @@ where
             break;
         }
         saw_decimal = is_decimal(char[0]);
-        num_string.push(char[0] as char);
 
         if !char[0].is_ascii_digit() && !is_decimal(char[0]) {
             break;
@@ -83,7 +83,7 @@ where
     return Token::Number(num_val);
 }
 
-fn tok_comment<T>(mut char: [u8; 1], mut reader: T) -> Token
+fn tok_comment<T>(mut char: [u8; 1], reader: &mut T) -> Token
 where
     T: Read,
 {
@@ -106,18 +106,19 @@ where
     }
 }
 
-fn tok_def_extern_or_ident<T>(mut char: [u8; 1], mut reader: T) -> Token
+fn tok_def_extern_or_ident<T>(mut char: [u8; 1], reader: &mut T) -> Token
 where
     T: Read,
 {
-    let mut ident = (char[0] as char).to_string();
+    let mut ident = String::new();
 
     while char[0].is_ascii_alphanumeric() {
+        ident.push(char[0] as char);
+
         let n = reader.read(&mut char).unwrap();
         if n == 0 {
             break;
         }
-        ident.push(char[0] as char);
     }
 
     return match ident.as_str() {
@@ -138,7 +139,7 @@ mod tests {
         let mut input = "123456789".as_bytes();
         let _ = input.read(&mut buf);
 
-        let result = tok_number(buf, input);
+        let result = tok_number(buf, &mut input);
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
@@ -152,7 +153,7 @@ mod tests {
         let mut input = "123456789.3798901".as_bytes();
         let _ = input.read(&mut buf);
 
-        let result = tok_number(buf, input);
+        let result = tok_number(buf, &mut input);
 
         match result {
             Token::Number(n) => assert!(crate::test_utilities::approx_equal(
@@ -173,7 +174,7 @@ mod tests {
         let mut input = "123456789.37989.01".as_bytes();
         let _ = input.read(&mut buf);
 
-        let _ = tok_number(buf, input);
+        let _ = tok_number(buf, &mut input);
     }
 
     #[test]
@@ -182,7 +183,7 @@ mod tests {
         let mut input = "def".as_bytes();
         let _ = input.read(&mut buf);
 
-        let result = tok_def_extern_or_ident(buf, input);
+        let result = tok_def_extern_or_ident(buf, &mut input);
 
         match result {
             Token::Def => (),
@@ -196,7 +197,7 @@ mod tests {
         let mut input = "extern".as_bytes();
         let _ = input.read(&mut buf);
 
-        let result = tok_def_extern_or_ident(buf, input);
+        let result = tok_def_extern_or_ident(buf, &mut input);
 
         match result {
             Token::Extern => (),
@@ -210,7 +211,7 @@ mod tests {
         let mut input = "# Some text like def extern\n".as_bytes();
         let _ = input.read(&mut buf);
 
-        let result = tok_comment(buf, input);
+        let result = tok_comment(buf, &mut input);
 
         match result {
             Token::EOF => (),
@@ -224,7 +225,7 @@ mod tests {
         let mut input = "# Some text like def extern".as_bytes();
         let _ = input.read(&mut buf);
 
-        let result = tok_comment(buf, input);
+        let result = tok_comment(buf, &mut input);
 
         match result {
             Token::EOF => (),
@@ -234,8 +235,8 @@ mod tests {
 
     #[test]
     fn test_get_token_valid_integer() {
-        let input = "123456789".as_bytes();
-        let result = get_token(input);
+        let mut input = "123456789".as_bytes();
+        let result = get_token(&mut input);
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
@@ -245,8 +246,8 @@ mod tests {
 
     #[test]
     fn test_get_token_valid_decimal() {
-        let input = "123456789.3798901".as_bytes();
-        let result = get_token(input);
+        let mut input = "123456789.3798901".as_bytes();
+        let result = get_token(&mut input);
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
@@ -259,14 +260,14 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
     )]
     fn test_get_token_too_many_decimal_points() {
-        let input = "123456789.37989.01".as_bytes();
-        let _ = get_token(input);
+        let mut input = "123456789.37989.01".as_bytes();
+        let _ = get_token(&mut input);
     }
 
     #[test]
     fn test_get_token_def() {
-        let input = "def".as_bytes();
-        let result = get_token(input);
+        let mut input = "def".as_bytes();
+        let result = get_token(&mut input);
 
         match result {
             Token::Def => (),
@@ -276,8 +277,8 @@ mod tests {
 
     #[test]
     fn test_get_token_extern() {
-        let input = "extern".as_bytes();
-        let result = get_token(input);
+        let mut input = "extern".as_bytes();
+        let result = get_token(&mut input);
 
         match result {
             Token::Extern => (),
@@ -287,8 +288,8 @@ mod tests {
 
     #[test]
     fn test_get_token_with_comment_newline_then_eof() {
-        let input = "# Some text like def extern\n".as_bytes();
-        let result = get_token(input);
+        let mut input = "# Some text like def extern\n".as_bytes();
+        let result = get_token(&mut input);
 
         match result {
             Token::EOF => (),
@@ -298,12 +299,95 @@ mod tests {
 
     #[test]
     fn test_get_token_with_comment_no_newline_then_eof() {
-        let input = "# Some text like def extern".as_bytes();
-        let result = get_token(input);
+        let mut input = "# Some text like def extern".as_bytes();
+        let result = get_token(&mut input);
 
         match result {
             Token::EOF => (),
             _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_get_token_alpha_ident() {
+        let mut input = "someident".as_bytes();
+        let result = get_token(&mut input);
+
+        match result {
+            Token::Identifier(s) => assert_eq!(s, "someident".to_string()),
+            _ => assert!(false, "Expected Identifier but got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_get_token_alphanumeric_ident() {
+        let mut input = "someident78".as_bytes();
+        let result = get_token(&mut input);
+
+        match result {
+            Token::Identifier(s) => assert_eq!(s, "someident78".to_string()),
+            _ => assert!(false, "Expected Identifier but got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_get_token_integration_all_tokens() {
+        let mut input = "def extern someident3 77.03 + # some stuff\n\ry".as_bytes();
+        let mut result = get_token(&mut input);
+
+        match result {
+            Token::Def => (),
+            _ => assert!(false, "Expected Def but got {:?}", result),
+        }
+
+        result = get_token(&mut input);
+        match result {
+            Token::Extern => (),
+            _ => assert!(false, "Expected Extern but got {:?}", result),
+        }
+
+        result = get_token(&mut input);
+        match result {
+            Token::Identifier(s) => assert_eq!(s, "someident3".to_string()),
+            _ => assert!(
+                false,
+                "Expected {:?} but got {:?}",
+                Token::Identifier("someident3".to_string()),
+                result
+            ),
+        }
+
+        result = get_token(&mut input);
+        match result {
+            Token::Number(n) => assert!(
+                approx_equal(n, 77.03, 8),
+                "Expected {:?} but got {:?}",
+                Token::Number(77.03),
+                n
+            ),
+            _ => assert!(
+                false,
+                "Expected {:?} but got {:?}",
+                Token::Number(77.03),
+                result
+            ),
+        }
+
+        result = get_token(&mut input);
+        match result {
+            Token::Misc(c) => assert_eq!(c, '+'),
+            _ => assert!(
+                false,
+                "Expected {:?} but got {:?}",
+                Token::Misc('+'),
+                result
+            ),
+        }
+
+        result = get_token(&mut input);
+        match result {
+            Token::EOF => (),
+            _ => assert!(false, "Expected {:?} but got {:?}", Token::EOF, result),
         }
     }
 }
