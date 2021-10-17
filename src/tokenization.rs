@@ -1,7 +1,6 @@
-use std::{
-    io::{Read, Stdin},
-    string::String,
-};
+use crate::test_utilities::approx_equal;
+
+use std::{io::Read, string::String};
 
 // TODO: Operators?
 enum Token {
@@ -55,11 +54,14 @@ fn get_token() -> Token {
     }
 }
 
-fn tok_number(mut char: [u8; 1], mut stdin: Stdin) -> Token {
+fn tok_number<T>(mut char: [u8; 1], mut stdin: T) -> Token
+where
+    T: Read,
+{
     let mut saw_decimal = is_decimal(char[0]);
     let mut num_string = (char[0] as char).to_string();
 
-    while char[0].is_ascii_digit() || is_decimal(char[0]) {
+    loop {
         let n = stdin.read(&mut char).unwrap();
         if n == 0 {
             break;
@@ -71,14 +73,23 @@ fn tok_number(mut char: [u8; 1], mut stdin: Stdin) -> Token {
         }
         saw_decimal = is_decimal(char[0]);
         num_string.push(char[0] as char);
+
+        if !char[0].is_ascii_digit() && !is_decimal(char[0]) {
+            break;
+        }
     }
 
     // Make sure this won't panic..
+    println!("num_string = {}", num_string);
+
     let num_val = num_string.parse::<f64>().unwrap();
     return Token::Number(num_val);
 }
 
-fn tok_comment(mut char: [u8; 1], mut stdin: Stdin) -> Token {
+fn tok_comment<T>(mut char: [u8; 1], mut stdin: T) -> Token
+where
+    T: Read,
+{
     loop {
         // Read until EOF or a newline character
         let n = stdin.read(&mut char).unwrap();
@@ -98,7 +109,10 @@ fn tok_comment(mut char: [u8; 1], mut stdin: Stdin) -> Token {
     }
 }
 
-fn tok_def_extern_or_ident(mut char: [u8; 1], mut stdin: Stdin) -> Token {
+fn tok_def_extern_or_ident<T>(mut char: [u8; 1], mut stdin: T) -> Token
+where
+    T: Read,
+{
     let mut ident = (char[0] as char).to_string();
 
     while char[0].is_ascii_alphanumeric() {
@@ -114,4 +128,32 @@ fn tok_def_extern_or_ident(mut char: [u8; 1], mut stdin: Stdin) -> Token {
         "extern" => Token::Extern,
         _ => Token::Identifier(ident),
     };
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tok_number_on_integer() {
+        let input = "23456789".as_bytes();
+        let buf: [u8; 1] = ['1' as u8];
+        let result = tok_number(buf, input);
+
+        match result {
+            Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_tok_number_on_decimal() {
+        let input = "23456789.3798901".as_bytes();
+        let buf: [u8; 1] = ['1' as u8];
+        let result = tok_number(buf, input);
+
+        match result {
+            Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
+            _ => assert!(false),
+        }
+    }
 }

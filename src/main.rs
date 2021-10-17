@@ -1,3 +1,4 @@
+mod test_utilities;
 pub mod tokenization;
 
 fn main() {
