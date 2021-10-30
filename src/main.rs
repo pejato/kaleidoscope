@@ -1,3 +1,4 @@
+pub mod ast;
 mod test_utilities;
 pub mod tokenization;
 
