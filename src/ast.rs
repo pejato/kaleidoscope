@@ -70,3 +70,7 @@ fn parse_extern() -> ! {
 fn parse_top_level_expression() -> ! {
     todo!()
 }
+
+fn log_error(str: String) {
+    eprintln!({ "log_error: {str}" });
+}

@@ -127,6 +127,16 @@ where
         _ => Token::Identifier(ident),
     };
 }
+
+// Token buffering
+fn get_next_token<T>(mut buffer: Token, reader: &mut T) -> Token
+where
+    T: Read,
+{
+    buffer = get_token(reader);
+    return buffer;
+})
+
 #[cfg(test)]
 mod tests {
     use crate::test_utilities::approx_equal;
