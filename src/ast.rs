@@ -1,3 +1,33 @@
+struct Expr {
+    kind: ExprKind,
+}
+
+enum ExprKind {
+    Number {
+        value: f64,
+    },
+    Variable {
+        name: String,
+    },
+    Binary {
+        operator: char,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Call {
+        callee: String,
+        args: Vec<Expr>,
+    },
+    Prototype {
+        name: String,
+        args: Vec<String>,
+    },
+    Function {
+        proto: Box<Expr>,
+        body: Vec<Expr>,
+    },
+}
+
 // Primary expression parsing
 fn parse_number_expr() -> ! {
     todo!()
