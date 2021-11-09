@@ -1,3 +1,4 @@
+use crate::tokenization::TokenConsumer;
 struct Expr {
     kind: ExprKind,
 }
@@ -29,8 +30,12 @@ enum ExprKind {
 }
 
 // Primary expression parsing
-fn parse_number_expr() -> ! {
-    todo!()
+fn parse_number_expr(number: f64, consumer: &mut TokenConsumer) -> Expr {
+    let result = Expr {
+        kind: ExprKind::Number { value: number },
+    };
+    consumer.consume_token();
+    return result;
 }
 
 fn parse_paren_expr() -> ! {
@@ -72,5 +77,5 @@ fn parse_top_level_expression() -> ! {
 }
 
 fn log_error(str: String) {
-    eprintln!({ "log_error: {str}" });
+    eprintln!("log_error: {}", str);
 }

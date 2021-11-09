@@ -128,14 +128,16 @@ where
     };
 }
 
-// Token buffering
-fn get_next_token<T>(mut buffer: Token, reader: &mut T) -> Token
-where
-    T: Read,
-{
-    buffer = get_token(reader);
-    return buffer;
-})
+pub struct TokenConsumer {
+    reader: Box<dyn Read>,
+    buffer: Token,
+}
+
+impl TokenConsumer {
+    pub fn consume_token(&mut self) {
+        self.buffer = get_token(&mut self.reader);
+    }
+}
 
 #[cfg(test)]
 mod tests {
