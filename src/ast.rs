@@ -1,4 +1,6 @@
-use crate::tokenization::TokenConsumer;
+use std::fmt::format;
+
+use crate::tokenization::{Token, TokenConsumer};
 struct Expr {
     kind: ExprKind,
 }
@@ -38,8 +40,24 @@ fn parse_number_expr(number: f64, consumer: &mut TokenConsumer) -> Expr {
     return result;
 }
 
-fn parse_paren_expr() -> ! {
-    todo!()
+fn parse_paren_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
+    // Eat '('
+    consumer.consume_token();
+
+    let result = parse_expression();
+    if result.is_none() {
+        return result;
+    }
+
+    match consumer.current_token() {
+        Some(Token::Misc(')')) => (),
+        Some(Token::Misc(c)) => return log_error(format!("Expected ')' but got {}!", c)),
+        None | Some(_) => return log_error("Expected ')'!".into()),
+    }
+    // Eat ')'
+    consumer.consume_token();
+
+    return result;
 }
 
 fn parse_identifier_expr() -> ! {
@@ -51,7 +69,7 @@ fn parse_primary_expr() -> ! {
 }
 
 // Operator parsing and precedence stuff
-fn parse_expression() -> ! {
+fn parse_expression() -> Option<Expr> {
     todo!()
 }
 
@@ -76,6 +94,7 @@ fn parse_top_level_expression() -> ! {
     todo!()
 }
 
-fn log_error(str: String) {
+fn log_error(str: String) -> Option<Expr> {
     eprintln!("log_error: {}", str);
+    return None;
 }

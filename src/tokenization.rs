@@ -1,7 +1,7 @@
 use std::{io::Read, string::String};
 
-#[derive(Debug)]
-enum Token {
+#[derive(Debug, Clone)]
+pub enum Token {
     EOF,
     Def,
     Extern,
@@ -130,12 +130,16 @@ where
 
 pub struct TokenConsumer {
     reader: Box<dyn Read>,
-    buffer: Token,
+    buffer: Option<Token>,
 }
 
 impl TokenConsumer {
     pub fn consume_token(&mut self) {
-        self.buffer = get_token(&mut self.reader);
+        self.buffer = get_token(&mut self.reader).into();
+    }
+
+    pub fn current_token(&self) -> &Option<Token> {
+        &self.buffer
     }
 }
 
