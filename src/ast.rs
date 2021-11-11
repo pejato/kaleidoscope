@@ -32,10 +32,16 @@ enum ExprKind {
 }
 
 // Primary expression parsing
-fn parse_number_expr(number: f64, consumer: &mut TokenConsumer) -> Expr {
-    let result = Expr {
-        kind: ExprKind::Number { value: number },
+fn parse_number_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
+    let result: Option<Expr> = match consumer.current_token() {
+        Some(Token::Number(number)) => Expr {
+            kind: ExprKind::Number { value: *number },
+        }
+        .into(),
+        Some(tok) => log_error(format!("Expected Token::Number(_) but got {:#?}", tok)),
+        None => log_error("Expected Token::Number(_) but got None!".into()),
     };
+
     consumer.consume_token();
     return result;
 }
