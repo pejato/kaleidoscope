@@ -1,6 +1,6 @@
 use std::{io::Read, string::String};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Token {
     EOF,
     Def,

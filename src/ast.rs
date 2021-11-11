@@ -52,7 +52,8 @@ fn parse_paren_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
     match consumer.current_token() {
         Some(Token::Misc(')')) => (),
         Some(Token::Misc(c)) => return log_error(format!("Expected ')' but got {}!", c)),
-        None | Some(_) => return log_error("Expected ')'!".into()),
+        Some(tok) => return log_error(format!("Expected ')' but got {:#?}", tok)),
+        None => return log_error("Expected ')' but got None!".into()),
     }
     // Eat ')'
     consumer.consume_token();
