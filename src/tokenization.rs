@@ -1,6 +1,6 @@
 use std::{io::Read, string::String};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     EOF,
     Def,

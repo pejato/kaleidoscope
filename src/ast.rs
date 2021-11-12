@@ -67,8 +67,55 @@ fn parse_paren_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
     return result;
 }
 
-fn parse_identifier_expr() -> ! {
-    todo!()
+fn parse_identifier_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
+    // Get the identifier string or fail out
+    let identifier = match consumer.current_token() {
+        Some(Token::Identifier(ident)) => Some(ident),
+        _ => None,
+    }?
+    .clone();
+
+    // Eat the identifier
+    consumer.consume_token();
+
+    // This is a Variable expr, not a Call expr, so we're done
+    match consumer.current_token() {
+        Some(Token::Misc('(')) => consumer.consume_token(),
+        _ => {
+            return Expr {
+                kind: ExprKind::Variable { name: identifier },
+            }
+            .into();
+        }
+    };
+
+    // Constructing a Call expr
+    let mut call_args = Vec::<Expr>::new();
+
+    while consumer.current_token() != &Some(Token::Misc(')')) {
+        // Try to parse an expr or bail
+        let expr = parse_expression()?;
+        call_args.push(expr);
+
+        // Call arguments must be postfixed by a closing parenthese or a comma
+        match consumer.current_token() {
+            Some(Token::Misc(')')) => break,
+            Some(Token::Misc(',')) => (),
+            _ => return log_error("Expected ')' or ','".into()),
+        };
+        consumer.consume_token();
+    }
+
+    // Eat the closing parenthese
+    consumer.consume_token();
+
+    return Expr {
+        kind: ExprKind::Call {
+            callee: identifier,
+            args: call_args,
+        },
+    }
+    .into();
 }
 
 fn parse_primary_expr() -> ! {
