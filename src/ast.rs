@@ -78,10 +78,10 @@ fn parse_identifier_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
     // Eat the identifier
     consumer.consume_token();
 
-    // This is a Variable expr, not a Call expr, so we're done
     match consumer.current_token() {
         Some(Token::Misc('(')) => consumer.consume_token(),
         _ => {
+            // This is a Variable expr, not a Call expr, so we're done
             return Expr {
                 kind: ExprKind::Variable { name: identifier },
             }
