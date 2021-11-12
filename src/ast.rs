@@ -32,16 +32,10 @@ enum ExprKind {
 }
 
 // Primary expression parsing
-fn parse_number_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
-    let result: Option<Expr> = match consumer.current_token() {
-        Some(Token::Number(number)) => Expr {
-            kind: ExprKind::Number { value: *number },
-        }
-        .into(),
-        Some(tok) => log_error(format!("Expected Token::Number(_) but got {:#?}", tok)),
-        None => log_error("Expected Token::Number(_) but got None!".into()),
+fn parse_number_expr(value: f64, consumer: &mut TokenConsumer) -> Expr {
+    let result = Expr {
+        kind: ExprKind::Number { value },
     };
-
     consumer.consume_token();
     return result;
 }
@@ -67,14 +61,7 @@ fn parse_paren_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
     return result;
 }
 
-fn parse_identifier_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
-    // Get the identifier string or fail out
-    let identifier = match consumer.current_token() {
-        Some(Token::Identifier(ident)) => Some(ident),
-        _ => None,
-    }?
-    .clone();
-
+fn parse_identifier_expr(identifier: String, consumer: &mut TokenConsumer) -> Option<Expr> {
     // Eat the identifier
     consumer.consume_token();
 
@@ -109,17 +96,21 @@ fn parse_identifier_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
     // Eat the closing parenthese
     consumer.consume_token();
 
-    return Expr {
-        kind: ExprKind::Call {
-            callee: identifier,
-            args: call_args,
-        },
-    }
-    .into();
+    let kind = ExprKind::Call {
+        callee: identifier,
+        args: call_args,
+    };
+
+    return Expr { kind }.into();
 }
 
-fn parse_primary_expr() -> ! {
-    todo!()
+fn parse_primary_expr(consumer: &mut TokenConsumer) -> Option<Expr> {
+    match consumer.current_token() {
+        Some(Token::Identifier(ident)) => parse_identifier_expr(ident.clone(), consumer),
+        Some(Token::Number(num)) => parse_number_expr(*num, consumer).into(),
+        Some(Token::Misc('(')) => parse_paren_expr(consumer),
+        _ => log_error("unknown token when expecting an expression".into()),
+    }
 }
 
 // Operator parsing and precedence stuff
