@@ -1,10 +1,21 @@
+use std::collections::HashMap;
+
+use crate::environment::Environment;
+
 pub mod ast;
+pub mod environment;
 mod test_utilities;
 pub mod tokenization;
 
 fn main() {
-    let my_str = "1.23.4".to_string();
+    let environment = build_environment();
+}
 
-    println!("{}", my_str.parse::<f64>().unwrap());
-    println!("Hello, world!");
+fn build_environment() -> Environment {
+    let mut environment = Environment::new();
+    [('<', 10), ('+', 20), ('-', 30), ('*', 40)]
+        .iter()
+        .for_each(|p| environment.add_operator_precedence(*p));
+
+    environment
 }
