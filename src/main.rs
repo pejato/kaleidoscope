@@ -1,21 +1,13 @@
 use std::collections::HashMap;
 
-use crate::environment::Environment;
+use crate::parser::Parser;
 
 pub mod ast;
 pub mod environment;
+pub mod parser;
 mod test_utilities;
 pub mod tokenization;
 
 fn main() {
-    let environment = build_environment();
-}
-
-fn build_environment() -> Environment {
-    let mut environment = Environment::new();
-    [('<', 10), ('+', 20), ('-', 30), ('*', 40)]
-        .iter()
-        .for_each(|p| environment.add_operator_precedence(*p));
-
-    environment
+    let parser = Parser::new();
 }
