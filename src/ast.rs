@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::{
     parser::Parser,
     tokenization::{Token, TokenConsumer},
