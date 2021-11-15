@@ -2,11 +2,11 @@ use crate::{
     parser::Parser,
     tokenization::{Token, TokenConsumer},
 };
-struct Expr {
+pub struct Expr {
     kind: ExprKind,
 }
 
-enum ExprKind {
+pub enum ExprKind {
     Number {
         value: f64,
     },
@@ -36,7 +36,7 @@ enum ExprKind {
 
 impl Parser {
     // Primary expression parsing
-    fn parse_number_expr(&mut self, value: f64, consumer: &mut TokenConsumer) -> Expr {
+    pub fn parse_number_expr(&mut self, value: f64, consumer: &mut TokenConsumer) -> Expr {
         let result = Expr {
             kind: ExprKind::Number { value },
         };
@@ -44,7 +44,7 @@ impl Parser {
         return result;
     }
 
-    fn parse_paren_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_paren_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         // Eat '('
         consumer.consume_token();
         let result = self.parse_expression(consumer)?;
@@ -61,7 +61,7 @@ impl Parser {
         return result.into();
     }
 
-    fn parse_identifier_expr(
+    pub fn parse_identifier_expr(
         &mut self,
         identifier: String,
         consumer: &mut TokenConsumer,
@@ -108,7 +108,7 @@ impl Parser {
         return Expr { kind }.into();
     }
 
-    fn parse_primary_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_primary_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         match consumer.current_token() {
             Some(Token::Identifier(ident)) => self.parse_identifier_expr(ident.clone(), consumer),
             Some(Token::Number(num)) => self.parse_number_expr(*num, consumer).into(),
@@ -118,12 +118,12 @@ impl Parser {
     }
 
     // Operator parsing and precedence stuff
-    fn parse_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         let primary = self.parse_primary_expr(consumer)?;
         self.parse_binary_op_rhs(0, primary, consumer)
     }
 
-    fn parse_binary_op_rhs(
+    pub fn parse_binary_op_rhs(
         &mut self,
         lowest_edible_op_precedence: i32,
         mut lhs: Expr,
@@ -170,7 +170,7 @@ impl Parser {
         }
     }
 
-    fn parse_function_prototype(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_function_prototype(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         let func_name: Option<String> = match consumer.current_token() {
             Some(Token::Identifier(i)) => Some(i.clone()),
             _ => None,
@@ -214,7 +214,7 @@ impl Parser {
         .into()
     }
 
-    fn parse_function_definition(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_function_definition(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         // Eat 'def'
         consumer.consume_token();
         let prototype = self.parse_function_prototype(consumer)?;
@@ -229,13 +229,13 @@ impl Parser {
         .into()
     }
 
-    fn parse_extern(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_extern(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         consumer.consume_token();
         self.parse_function_prototype(consumer)
     }
 
     // Handle top level expressions by defining zero argument functions containing the expr
-    fn parse_top_level_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_top_level_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         let expression = self.parse_expression(consumer)?;
         let prototype = ExprKind::Prototype {
             name: "".to_string(),

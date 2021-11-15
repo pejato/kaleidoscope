@@ -134,6 +134,12 @@ pub struct TokenConsumer {
 }
 
 impl TokenConsumer {
+    pub fn new(reader: Box<dyn Read>) -> Self {
+        TokenConsumer {
+            reader: reader,
+            buffer: None,
+        }
+    }
     pub fn consume_token(&mut self) {
         self.buffer = get_token(&mut self.reader).into();
     }
