@@ -27,8 +27,8 @@ enum ExprKind {
         args: Vec<String>,
     },
     Function {
-        proto: Box<Expr>,
-        body: Vec<Expr>,
+        prototype: Box<Expr>,
+        body: Box<Expr>,
     },
 }
 
@@ -170,21 +170,85 @@ impl Parser {
         }
     }
 
-    fn parse_function_prototype(&mut self) -> ! {
-        todo!()
+    fn parse_function_prototype(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+        let func_name: Option<String> = match consumer.current_token() {
+            Some(Token::Identifier(i)) => Some(i.clone()),
+            _ => None,
+        };
+
+        if func_name.is_none() {
+            return self.log_error("Expected function name in protype".into());
+        }
+
+        let func_name = func_name.unwrap();
+        consumer.consume_token();
+
+        // Opening (
+        match consumer.current_token() {
+            Some(Token::Misc('(')) => (),
+            _ => return self.log_error("Expected '(' in prototype".into()),
+        }
+        consumer.consume_token();
+
+        let mut arg_names: Vec<String> = vec![];
+        while let Some(ident) = match consumer.current_token() {
+            Some(Token::Identifier(ident)) => Some(ident),
+            _ => None,
+        } {
+            arg_names.push(ident.to_string());
+            consumer.consume_token();
+        }
+
+        match consumer.current_token() {
+            Some(Token::Misc(')')) => (),
+            _ => return self.log_error("Expected ')' in prototype".into()),
+        }
+        consumer.consume_token();
+
+        Expr {
+            kind: ExprKind::Prototype {
+                args: arg_names,
+                name: func_name,
+            },
+        }
+        .into()
     }
 
-    fn parse_function_definition(&mut self) -> ! {
-        todo!()
+    fn parse_function_definition(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+        // Eat 'def'
+        consumer.consume_token();
+        let prototype = self.parse_function_prototype(consumer)?;
+        let expression = self.parse_expression(consumer)?;
+
+        Expr {
+            kind: ExprKind::Function {
+                prototype: Box::new(prototype),
+                body: Box::new(expression),
+            },
+        }
+        .into()
     }
 
-    fn parse_extern(&mut self) -> ! {
-        todo!()
+    fn parse_extern(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+        consumer.consume_token();
+        self.parse_function_prototype(consumer)
     }
 
     // Handle top level expressions by defining zero argument functions containing the expr
-    fn parse_top_level_expression(&mut self) -> ! {
-        todo!()
+    fn parse_top_level_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+        let expression = self.parse_expression(consumer)?;
+        let prototype = ExprKind::Prototype {
+            name: "".to_string(),
+            args: vec![],
+        };
+
+        Expr {
+            kind: ExprKind::Function {
+                prototype: Box::new(Expr { kind: prototype }),
+                body: Box::new(expression),
+            },
+        }
+        .into()
     }
 
     fn log_error(&self, str: String) -> Option<Expr> {
