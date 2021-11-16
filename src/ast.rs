@@ -1,7 +1,8 @@
+#[derive(Debug, PartialEq, PartialOrd)]
 pub struct Expr {
     pub kind: ExprKind,
 }
-
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum ExprKind {
     Number {
         value: f64,

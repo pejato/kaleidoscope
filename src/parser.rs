@@ -237,3 +237,39 @@ impl Parser {
         return None;
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utilities::*;
+
+    #[test]
+    fn test_new_sets_up_operator_precedences() {
+        let parser = Parser::new();
+
+        assert_eq!(parser.environment.get_operator_precedence('<'), 10.into());
+        assert_eq!(parser.environment.get_operator_precedence('+'), 20.into());
+        assert_eq!(parser.environment.get_operator_precedence('-'), 30.into());
+        assert_eq!(parser.environment.get_operator_precedence('*'), 40.into());
+    }
+
+    #[test]
+    fn test_parse_number_expr_creates_number_expr() {
+        let reader = "(extern B)".as_bytes();
+        let mut parser = Parser::new();
+        let mut consumer = TokenConsumer::new(Box::new(reader));
+
+        let result = parser.parse_number_expr(64.0, &mut consumer);
+
+        match result {
+            Expr {
+                kind: ExprKind::Number { value: val },
+            } => assert!(approx_equal(64.0, val, 5)),
+            _ => assert!(false, "Expected ExprKind::Number"),
+        }
+    }
+
+    #[test]
+    fn test_parse_number_expr_consumes_token() -> ! {
+        todo!()
+    }
+}
