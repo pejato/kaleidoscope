@@ -1,6 +1,6 @@
 use std::{io::Read, string::String};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     EOF,
     Def,
@@ -140,7 +140,7 @@ impl TokenConsumer {
             buffer: None,
         }
     }
-    pub fn consume_token(&mut self) {
+    pub fn get_next_token(&mut self) {
         self.buffer = get_token(&mut self.reader).into();
     }
 
@@ -151,7 +151,7 @@ impl TokenConsumer {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utilities::approx_equal;
+    use crate::test_utilities::test::approx_equal;
 
     use super::*;
 
@@ -178,11 +178,7 @@ mod tests {
         let result = tok_number(buf, &mut input);
 
         match result {
-            Token::Number(n) => assert!(crate::test_utilities::approx_equal(
-                n,
-                123456789.3798901,
-                15
-            )),
+            Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
             _ => assert!(false),
         }
     }

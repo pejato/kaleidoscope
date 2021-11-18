@@ -12,7 +12,7 @@ fn handle_function_definition(parser: &mut Parser, lexer: &mut TokenConsumer) {
     if parser.parse_function_definition(lexer).is_some() {
         eprintln!("Parsed a function definition");
     } else {
-        lexer.consume_token();
+        lexer.get_next_token();
     }
 }
 
@@ -20,7 +20,7 @@ fn handle_extern(parser: &mut Parser, lexer: &mut TokenConsumer) {
     if parser.parse_extern(lexer).is_some() {
         eprintln!("Parsed an extern");
     } else {
-        lexer.consume_token();
+        lexer.get_next_token();
     }
 }
 
@@ -28,20 +28,20 @@ fn handle_top_level_expression(parser: &mut Parser, lexer: &mut TokenConsumer) {
     if parser.parse_top_level_expression(lexer).is_some() {
         eprintln!("Parsed a top level expression");
     } else {
-        lexer.consume_token();
+        lexer.get_next_token();
     }
 }
 
 fn main() {
     let mut parser = Parser::new();
     let mut lexer = TokenConsumer::new(Box::new(std::io::stdin()));
-    lexer.consume_token();
+    lexer.get_next_token();
 
     loop {
         eprint!("ready>");
         match lexer.current_token() {
             Some(Token::EOF) | None => return,
-            Some(Token::Misc(';')) => lexer.consume_token(),
+            Some(Token::Misc(';')) => lexer.get_next_token(),
             Some(Token::Def) => handle_function_definition(&mut parser, &mut lexer),
             Some(Token::Extern) => handle_extern(&mut parser, &mut lexer),
             _ => handle_top_level_expression(&mut parser, &mut lexer),

@@ -21,13 +21,13 @@ impl Parser {
         let result = Expr {
             kind: ExprKind::Number { value },
         };
-        consumer.consume_token();
+        consumer.get_next_token();
         return result;
     }
 
     pub fn parse_paren_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         // Eat '('
-        consumer.consume_token();
+        consumer.get_next_token();
         let result = self.parse_expression(consumer)?;
 
         match consumer.current_token() {
@@ -37,7 +37,7 @@ impl Parser {
             None => return self.log_error("Expected ')' but got None!".into()),
         }
         // Eat ')'
-        consumer.consume_token();
+        consumer.get_next_token();
 
         return result.into();
     }
@@ -48,10 +48,10 @@ impl Parser {
         consumer: &mut TokenConsumer,
     ) -> Option<Expr> {
         // Eat the identifier
-        consumer.consume_token();
+        consumer.get_next_token();
 
         match consumer.current_token() {
-            Some(Token::Misc('(')) => consumer.consume_token(),
+            Some(Token::Misc('(')) => consumer.get_next_token(),
             _ => {
                 // This is a Variable expr, not a Call expr, so we're done
                 return Expr {
@@ -75,11 +75,11 @@ impl Parser {
                 Some(Token::Misc(',')) => (),
                 _ => return self.log_error("Expected ')' or ','".into()),
             };
-            consumer.consume_token();
+            consumer.get_next_token();
         }
 
         // Eat the closing parenthese
-        consumer.consume_token();
+        consumer.get_next_token();
 
         let kind = ExprKind::Call {
             callee: identifier,
@@ -127,7 +127,7 @@ impl Parser {
             }
 
             let op = op.unwrap();
-            consumer.consume_token();
+            consumer.get_next_token();
             let mut rhs = self.parse_primary_expr(consumer)?;
 
             // Checking if there is a higher precedence operator to the RHS
@@ -162,14 +162,14 @@ impl Parser {
         }
 
         let func_name = func_name.unwrap();
-        consumer.consume_token();
+        consumer.get_next_token();
 
         // Opening (
         match consumer.current_token() {
             Some(Token::Misc('(')) => (),
             _ => return self.log_error("Expected '(' in prototype".into()),
         }
-        consumer.consume_token();
+        consumer.get_next_token();
 
         let mut arg_names: Vec<String> = vec![];
         while let Some(ident) = match consumer.current_token() {
@@ -177,14 +177,14 @@ impl Parser {
             _ => None,
         } {
             arg_names.push(ident.to_string());
-            consumer.consume_token();
+            consumer.get_next_token();
         }
 
         match consumer.current_token() {
             Some(Token::Misc(')')) => (),
             _ => return self.log_error("Expected ')' in prototype".into()),
         }
-        consumer.consume_token();
+        consumer.get_next_token();
 
         Expr {
             kind: ExprKind::Prototype {
@@ -197,7 +197,7 @@ impl Parser {
 
     pub fn parse_function_definition(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
         // Eat 'def'
-        consumer.consume_token();
+        consumer.get_next_token();
         let prototype = self.parse_function_prototype(consumer)?;
         let expression = self.parse_expression(consumer)?;
 
@@ -211,7 +211,7 @@ impl Parser {
     }
 
     pub fn parse_extern(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
-        consumer.consume_token();
+        consumer.get_next_token();
         self.parse_function_prototype(consumer)
     }
 
@@ -240,7 +240,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utilities::*;
+    use crate::test_utilities::test::*;
 
     #[test]
     fn test_new_sets_up_operator_precedences() {
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_parse_number_expr_creates_number_expr() {
-        let reader = "(extern B)".as_bytes();
+        let reader = "64 + 3".as_bytes();
         let mut parser = Parser::new();
         let mut consumer = TokenConsumer::new(Box::new(reader));
 
@@ -269,7 +269,24 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_number_expr_consumes_token() -> ! {
-        todo!()
+    fn test_parse_number_expr_consumes_token() {
+        let reader = "64 + 3".as_bytes();
+        let mut parser = Parser::new();
+        let mut consumer = TokenConsumer::new(Box::new(reader));
+        consumer.get_next_token();
+
+        let current_token: Option<Token> = consumer.current_token().clone();
+        match current_token {
+            Some(Token::Number(num)) => {
+                parser.parse_number_expr(num, &mut consumer);
+                assert!(approx_equal(64.0, num, 5))
+            }
+            _ => assert!(false, "Expected Token::Number(64.0)"),
+        }
+
+        match consumer.current_token() {
+            Some(Token::Misc('+')) => (),
+            _ => assert!(false, "Expected '+'"),
+        }
     }
 }
