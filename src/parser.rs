@@ -289,4 +289,21 @@ mod tests {
             _ => assert!(false, "Expected '+'"),
         }
     }
+
+    #[test]
+    fn test_parse_paren_expr() {
+        let reader = "(78)".as_bytes();
+        let mut parser = Parser::new();
+        let mut consumer = TokenConsumer::new(Box::new(reader));
+        consumer.get_next_token();
+
+        let result = parser.parse_paren_expr(&mut consumer);
+
+        match result {
+            Some(Expr {
+                kind: ExprKind::Number { value: val },
+            }) => assert!(approx_equal(val, 78.0, 5)),
+            _ => assert!(false, "Expected Expr::Kind(Number(78))"),
+        }
+    }
 }
