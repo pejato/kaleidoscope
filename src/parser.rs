@@ -1,6 +1,8 @@
+use std::io::BufRead;
+
 use crate::ast::{Expr, ExprKind};
 use crate::environment::Environment;
-use crate::tokenization::{Token, TokenConsumer};
+use crate::tokenization::{Lexer, Token};
 
 pub struct Parser {
     pub environment: Environment,
@@ -17,7 +19,7 @@ impl Parser {
     }
 
     // Primary expression parsing
-    pub fn parse_number_expr(&mut self, value: f64, consumer: &mut TokenConsumer) -> Expr {
+    pub fn parse_number_expr<T: BufRead>(&mut self, value: f64, consumer: &mut Lexer<T>) -> Expr {
         let result = Expr {
             kind: ExprKind::Number { value },
         };
@@ -25,7 +27,7 @@ impl Parser {
         return result;
     }
 
-    pub fn parse_paren_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_paren_expr<T: BufRead>(&mut self, consumer: &mut Lexer<T>) -> Option<Expr> {
         // Eat '('
         consumer.get_next_token();
         let result = self.parse_expression(consumer)?;
@@ -42,10 +44,10 @@ impl Parser {
         return result.into();
     }
 
-    pub fn parse_identifier_expr(
+    pub fn parse_identifier_expr<T: BufRead>(
         &mut self,
         identifier: String,
-        consumer: &mut TokenConsumer,
+        consumer: &mut Lexer<T>,
     ) -> Option<Expr> {
         // Eat the identifier
         consumer.get_next_token();
@@ -89,7 +91,7 @@ impl Parser {
         return Expr { kind }.into();
     }
 
-    pub fn parse_primary_expr(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_primary_expr<T: BufRead>(&mut self, consumer: &mut Lexer<T>) -> Option<Expr> {
         match consumer.current_token() {
             Some(Token::Identifier(ident)) => self.parse_identifier_expr(ident.clone(), consumer),
             Some(Token::Number(num)) => self.parse_number_expr(*num, consumer).into(),
@@ -99,16 +101,16 @@ impl Parser {
     }
 
     // Operator parsing and precedence stuff
-    pub fn parse_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_expression<T: BufRead>(&mut self, consumer: &mut Lexer<T>) -> Option<Expr> {
         let primary = self.parse_primary_expr(consumer)?;
         self.parse_binary_op_rhs(0, primary, consumer)
     }
 
-    pub fn parse_binary_op_rhs(
+    pub fn parse_binary_op_rhs<T: BufRead>(
         &mut self,
         lowest_edible_op_precedence: i32,
         mut lhs: Expr,
-        consumer: &mut TokenConsumer,
+        consumer: &mut Lexer<T>,
     ) -> Option<Expr> {
         loop {
             // Try looking up precedence and default to -1 (which is worst than
@@ -151,7 +153,10 @@ impl Parser {
         }
     }
 
-    pub fn parse_function_prototype(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_function_prototype<T: BufRead>(
+        &mut self,
+        consumer: &mut Lexer<T>,
+    ) -> Option<Expr> {
         let func_name: Option<String> = match consumer.current_token() {
             Some(Token::Identifier(i)) => Some(i.clone()),
             _ => None,
@@ -195,7 +200,10 @@ impl Parser {
         .into()
     }
 
-    pub fn parse_function_definition(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_function_definition<T: BufRead>(
+        &mut self,
+        consumer: &mut Lexer<T>,
+    ) -> Option<Expr> {
         // Eat 'def'
         consumer.get_next_token();
         let prototype = self.parse_function_prototype(consumer)?;
@@ -210,13 +218,16 @@ impl Parser {
         .into()
     }
 
-    pub fn parse_extern(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_extern<T: BufRead>(&mut self, consumer: &mut Lexer<T>) -> Option<Expr> {
         consumer.get_next_token();
         self.parse_function_prototype(consumer)
     }
 
     // Handle top level expressions by defining zero argument functions containing the expr
-    pub fn parse_top_level_expression(&mut self, consumer: &mut TokenConsumer) -> Option<Expr> {
+    pub fn parse_top_level_expression<T: BufRead>(
+        &mut self,
+        consumer: &mut Lexer<T>,
+    ) -> Option<Expr> {
         let expression = self.parse_expression(consumer)?;
         let prototype = ExprKind::Prototype {
             name: "".to_string(),
@@ -256,7 +267,7 @@ mod tests {
     fn test_parse_number_expr_creates_number_expr() {
         let reader = "64 + 3".as_bytes();
         let mut parser = Parser::new();
-        let mut consumer = TokenConsumer::new(Box::new(reader));
+        let mut consumer = Lexer::new(Box::new(reader));
 
         let result = parser.parse_number_expr(64.0, &mut consumer);
 
@@ -272,7 +283,7 @@ mod tests {
     fn test_parse_number_expr_consumes_token() {
         let reader = "64 + 3".as_bytes();
         let mut parser = Parser::new();
-        let mut consumer = TokenConsumer::new(Box::new(reader));
+        let mut consumer = Lexer::new(Box::new(reader));
         consumer.get_next_token();
 
         let current_token: Option<Token> = consumer.current_token().clone();
@@ -294,7 +305,7 @@ mod tests {
     fn test_parse_paren_expr() {
         let reader = "(78)".as_bytes();
         let mut parser = Parser::new();
-        let mut consumer = TokenConsumer::new(Box::new(reader));
+        let mut consumer = Lexer::new(Box::new(reader));
         consumer.get_next_token();
 
         let result = parser.parse_paren_expr(&mut consumer);

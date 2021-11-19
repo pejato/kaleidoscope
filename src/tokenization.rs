@@ -1,4 +1,7 @@
-use std::{io::Read, string::String};
+use std::{
+    io::{BufRead, ErrorKind},
+    string::String,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -10,142 +13,154 @@ pub enum Token {
     Misc(char),
 }
 
-fn is_decimal(c: u8) -> bool {
-    c == ('.' as u8)
-}
-
-fn is_newline(c: u8) -> bool {
-    c == ('\n' as u8) || c == ('\r' as u8)
-}
-
-// TODO: Look at actual error type in reader.read
-fn get_token<T>(reader: &mut T) -> Token
+pub struct Lexer<T>
 where
-    T: Read,
+    T: BufRead,
 {
-    let mut char: [u8; 1] = [0];
-    let mut n: usize;
-
-    loop {
-        n = reader.read(&mut char).unwrap();
-        if n == 0 {
-            break;
-        }
-        if !char[0].is_ascii_whitespace() {
-            break;
-        }
-    }
-
-    // Def, Extern, or Identifier
-    if char[0].is_ascii_alphabetic() {
-        return tok_def_extern_or_ident(char, reader);
-        // Number
-    } else if char[0].is_ascii_digit() || is_decimal(char[0]) {
-        return tok_number(char, reader);
-        // Comment
-    } else if char[0] == ('#' as u8) {
-        return tok_comment(char, reader);
-    }
-
-    if n == 0 {
-        Token::EOF
-    } else {
-        Token::Misc(char[0] as char)
-    }
-}
-
-fn tok_number<T>(mut char: [u8; 1], reader: &mut T) -> Token
-where
-    T: Read,
-{
-    let mut saw_decimal = is_decimal(char[0]);
-    let mut num_string = String::new();
-
-    loop {
-        num_string.push(char[0] as char);
-        let n = reader.read(&mut char).unwrap();
-        if n == 0 {
-            break;
-        }
-
-        // If we already have a decimal in the number, and this is a decimal, we can't read any more digits => bail.
-        if saw_decimal && is_decimal(char[0]) {
-            break;
-        }
-        saw_decimal = is_decimal(char[0]);
-
-        if !char[0].is_ascii_digit() && !is_decimal(char[0]) {
-            break;
-        }
-    }
-
-    let num_val = num_string.parse::<f64>().unwrap();
-    return Token::Number(num_val);
-}
-
-fn tok_comment<T>(mut char: [u8; 1], reader: &mut T) -> Token
-where
-    T: Read,
-{
-    loop {
-        // Read until EOF or a newline character
-        let n = reader.read(&mut char).unwrap();
-        if n == 0 {
-            return Token::EOF;
-        }
-        if is_newline(char[0]) {
-            // Strip characters until we encounter a non-newline
-            while is_newline(char[0]) {
-                match reader.read(&mut char) {
-                    Err(_) | Ok(0) => return Token::EOF,
-                    _ => (),
-                }
-            }
-            return get_token(reader);
-        }
-    }
-}
-
-fn tok_def_extern_or_ident<T>(mut char: [u8; 1], reader: &mut T) -> Token
-where
-    T: Read,
-{
-    let mut ident = String::new();
-
-    while char[0].is_ascii_alphanumeric() {
-        ident.push(char[0] as char);
-
-        let n = reader.read(&mut char).unwrap();
-        if n == 0 {
-            break;
-        }
-    }
-
-    return match ident.as_str() {
-        "def" => Token::Def,
-        "extern" => Token::Extern,
-        _ => Token::Identifier(ident),
-    };
-}
-
-pub struct TokenConsumer {
-    reader: Box<dyn Read>,
+    reader: T,
     buffer: Option<Token>,
+    char_buffer: Option<char>,
 }
 
-impl TokenConsumer {
-    pub fn new(reader: Box<dyn Read>) -> Self {
-        TokenConsumer {
+#[macro_export]
+macro_rules! read_exact {
+    ($reader: expr, $buf:expr) => {{
+        match $reader.read_exact(&mut $buf) {
+            Ok(_) => (),
+            Err(e) if e.kind() == ErrorKind::UnexpectedEof => {
+                eprintln!("Got EOF, exiting...\n");
+                std::process::exit(1);
+            }
+            Err(_) => {
+                eprintln!("Failed to read character while Lexing, exiting...\n");
+                std::process::exit(1);
+            }
+        }
+    };};
+}
+
+impl<T> Lexer<T>
+where
+    T: BufRead,
+{
+    // Free functions
+
+    pub fn new(reader: T) -> Self {
+        Lexer {
             reader: reader,
             buffer: None,
+            char_buffer: None,
         }
     }
+
     pub fn get_next_token(&mut self) {
-        self.buffer = get_token(&mut self.reader).into();
+        self.buffer = self.get_token().into();
     }
 
     pub fn current_token(&self) -> &Option<Token> {
         &self.buffer
+    }
+
+    fn is_newline(c: Option<char>) -> bool {
+        if c.is_none() {
+            return false;
+        }
+        let c = c.unwrap();
+
+        c == '\n' || c == '\r'
+    }
+
+    // Methods
+
+    unsafe fn try_get_char(&mut self, does_eat_whitespace: bool) -> char {
+        if let Some(ch) = self.char_buffer {
+            return ch;
+        }
+        static mut BUF: [u8; 1] = [56];
+        // TODO: Figure out if we can detect if input stream is not unicode
+        // TODO: Pass a closure here to determine when to return a char
+        loop {
+            read_exact!(self.reader, BUF);
+
+            if BUF[0].is_ascii() {
+                self.char_buffer = char::from(BUF[0]).into();
+            }
+
+            match self.char_buffer {
+                Some(c) if !does_eat_whitespace && c.is_ascii_whitespace() => (),
+                Some(c) => {
+                    return c;
+                }
+                None => panic!("Failed to read character while Lexing, exiting...\n"),
+            }
+        }
+    }
+
+    fn get_token(&mut self) -> Token {
+        let ch = unsafe { self.try_get_char(true) };
+
+        // Def, Extern, or Identifier
+        if ch.is_ascii_alphabetic() {
+            return self.tok_def_extern_or_ident();
+            // Number
+        } else if ch.is_ascii_digit() || ch == '.' {
+            return self.tok_number(ch);
+            // Comment
+        } else if ch == '#' {
+            return self.tok_comment();
+        }
+
+        Token::Misc(ch)
+    }
+
+    fn tok_number(&mut self, ch: char) -> Token {
+        let mut saw_decimal = ch == '.';
+        let mut num_string = String::new();
+
+        loop {
+            num_string.push(ch);
+            let ch = unsafe { self.try_get_char(false) };
+
+            // If we already have a decimal in the number, and this is a decimal, we can't read any more digits => bail.
+            if saw_decimal && ch == '.' {
+                break;
+            }
+            saw_decimal = ch == '.';
+
+            if !ch.is_ascii_digit() && ch != '.' {
+                break;
+            }
+        }
+
+        let num_val = num_string.parse::<f64>().unwrap();
+        return Token::Number(num_val);
+    }
+
+    fn tok_comment(&mut self) -> Token {
+        loop {
+            // Read until a newline character
+            let ch = unsafe { self.try_get_char(false) };
+
+            if !Self::is_newline(ch.into()) {
+                // This ignores whitespace, so we'll eat all whitespaces until we get
+                // a token.
+                return self.get_token();
+            }
+        }
+    }
+
+    fn tok_def_extern_or_ident(&mut self) -> Token {
+        let mut ident = String::new();
+
+        while self.char_buffer.map_or(false, |c| c.is_alphanumeric()) {
+            ident.push(self.char_buffer.unwrap());
+        }
+
+        return match ident.as_str() {
+            "def" => Token::Def,
+            "extern" => Token::Extern,
+            _ => Token::Identifier(ident),
+        };
     }
 }
 
@@ -157,11 +172,8 @@ mod tests {
 
     #[test]
     fn test_tok_number_valid_integer() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "123456789".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let result = tok_number(buf, &mut input);
+        let mut lexer = Lexer::new("23456789".as_bytes());
+        let result = lexer.tok_number('1');
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
@@ -171,11 +183,8 @@ mod tests {
 
     #[test]
     fn test_tok_number_valid_decimal() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "123456789.3798901".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let result = tok_number(buf, &mut input);
+        let mut lexer = Lexer::new("23456789.3798901".as_bytes());
+        let result = lexer.tok_number('1');
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
@@ -185,23 +194,18 @@ mod tests {
 
     #[test]
     #[should_panic(
+        // TODO: We really shouldn't be panicking in this situation.
         expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
     )]
     fn test_tok_number_too_many_decimal_points() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "123456789.37989.01".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let _ = tok_number(buf, &mut input);
+        let mut lexer = Lexer::new("23456789.37989.01".as_bytes());
+        let _ = lexer.tok_number('1');
     }
 
     #[test]
     fn test_tok_valid_def() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "def".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let result = tok_def_extern_or_ident(buf, &mut input);
+        let mut lexer = Lexer::new("def".as_bytes());
+        let result = lexer.tok_def_extern_or_ident();
 
         match result {
             Token::Def => (),
@@ -211,11 +215,8 @@ mod tests {
 
     #[test]
     fn test_tok_valid_extern() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "extern".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let result = tok_def_extern_or_ident(buf, &mut input);
+        let mut lexer = Lexer::new("extern".as_bytes());
+        let result = lexer.tok_def_extern_or_ident();
 
         match result {
             Token::Extern => (),
@@ -225,11 +226,8 @@ mod tests {
 
     #[test]
     fn test_tok_comment_with_newline_then_eof() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "# Some text like def extern\n".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let result = tok_comment(buf, &mut input);
+        let mut lexer = Lexer::new("# Some text like def extern\n".as_bytes());
+        let result = lexer.tok_comment();
 
         match result {
             Token::EOF => (),
@@ -239,11 +237,8 @@ mod tests {
 
     #[test]
     fn test_tok_comment_with_no_newline_then_eof() {
-        let mut buf: [u8; 1] = [0];
-        let mut input = "# Some text like def extern".as_bytes();
-        let _ = input.read(&mut buf);
-
-        let result = tok_comment(buf, &mut input);
+        let mut lexer = Lexer::new("# Some text like def extern".as_bytes());
+        let result = lexer.tok_comment();
 
         match result {
             Token::EOF => (),
@@ -253,8 +248,8 @@ mod tests {
 
     #[test]
     fn test_get_token_valid_integer() {
-        let mut input = "123456789".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("123456789".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
@@ -264,8 +259,8 @@ mod tests {
 
     #[test]
     fn test_get_token_valid_decimal() {
-        let mut input = "123456789.3798901".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("123456789.3798901".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
@@ -278,14 +273,14 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
     )]
     fn test_get_token_too_many_decimal_points() {
-        let mut input = "123456789.37989.01".as_bytes();
-        let _ = get_token(&mut input);
+        let mut lexer = Lexer::new("123456789.37989.01".as_bytes());
+        let _ = lexer.get_token();
     }
 
     #[test]
     fn test_get_token_def() {
-        let mut input = "def".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("def".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::Def => (),
@@ -295,8 +290,8 @@ mod tests {
 
     #[test]
     fn test_get_token_extern() {
-        let mut input = "extern".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("extern".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::Extern => (),
@@ -306,8 +301,8 @@ mod tests {
 
     #[test]
     fn test_get_token_with_comment_newline_then_eof() {
-        let mut input = "# Some text like def extern\n".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("# Some text like def extern\n".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::EOF => (),
@@ -317,8 +312,8 @@ mod tests {
 
     #[test]
     fn test_get_token_with_comment_no_newline_then_eof() {
-        let mut input = "# Some text like def extern".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("# Some text like def extern".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::EOF => (),
@@ -328,8 +323,8 @@ mod tests {
 
     #[test]
     fn test_get_token_alpha_ident() {
-        let mut input = "someident".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("someident".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::Identifier(s) => assert_eq!(s, "someident".to_string()),
@@ -339,8 +334,8 @@ mod tests {
 
     #[test]
     fn test_get_token_alphanumeric_ident() {
-        let mut input = "someident78".as_bytes();
-        let result = get_token(&mut input);
+        let mut lexer = Lexer::new("someident78".as_bytes());
+        let result = lexer.get_token();
 
         match result {
             Token::Identifier(s) => assert_eq!(s, "someident78".to_string()),
@@ -350,21 +345,21 @@ mod tests {
 
     #[test]
     fn test_get_token_integration_all_tokens() {
-        let mut input = "def extern someident3 77.03 + # some stuff\n\ry".as_bytes();
-        let mut result = get_token(&mut input);
+        let mut lexer = Lexer::new("def extern someident3 77.03 + # some stuff\n\ry".as_bytes());
+        let mut result = lexer.get_token();
 
         match result {
             Token::Def => (),
             _ => assert!(false, "Expected Def but got {:?}", result),
         }
 
-        result = get_token(&mut input);
+        result = lexer.get_token();
         match result {
             Token::Extern => (),
             _ => assert!(false, "Expected Extern but got {:?}", result),
         }
 
-        result = get_token(&mut input);
+        result = lexer.get_token();
         match result {
             Token::Identifier(s) => assert_eq!(s, "someident3".to_string()),
             _ => assert!(
@@ -375,7 +370,7 @@ mod tests {
             ),
         }
 
-        result = get_token(&mut input);
+        result = lexer.get_token();
         match result {
             Token::Number(n) => assert!(
                 approx_equal(n, 77.03, 8),
@@ -391,7 +386,7 @@ mod tests {
             ),
         }
 
-        result = get_token(&mut input);
+        result = lexer.get_token();
         match result {
             Token::Misc(c) => assert_eq!(c, '+'),
             _ => assert!(
@@ -402,7 +397,7 @@ mod tests {
             ),
         }
 
-        result = get_token(&mut input);
+        result = lexer.get_token();
         match result {
             Token::EOF => (),
             _ => assert!(false, "Expected {:?} but got {:?}", Token::EOF, result),

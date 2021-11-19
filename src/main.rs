@@ -1,6 +1,6 @@
-use tokenization::{Token, TokenConsumer};
-
 use crate::parser::Parser;
+use std::io::{stdin, BufRead};
+use tokenization::{Lexer, Token};
 
 pub mod ast;
 pub mod environment;
@@ -8,7 +8,7 @@ pub mod parser;
 mod test_utilities;
 pub mod tokenization;
 
-fn handle_function_definition(parser: &mut Parser, lexer: &mut TokenConsumer) {
+fn handle_function_definition<T: BufRead>(parser: &mut Parser, lexer: &mut Lexer<T>) {
     if parser.parse_function_definition(lexer).is_some() {
         eprintln!("Parsed a function definition");
     } else {
@@ -16,7 +16,7 @@ fn handle_function_definition(parser: &mut Parser, lexer: &mut TokenConsumer) {
     }
 }
 
-fn handle_extern(parser: &mut Parser, lexer: &mut TokenConsumer) {
+fn handle_extern<T: BufRead>(parser: &mut Parser, lexer: &mut Lexer<T>) {
     if parser.parse_extern(lexer).is_some() {
         eprintln!("Parsed an extern");
     } else {
@@ -24,7 +24,7 @@ fn handle_extern(parser: &mut Parser, lexer: &mut TokenConsumer) {
     }
 }
 
-fn handle_top_level_expression(parser: &mut Parser, lexer: &mut TokenConsumer) {
+fn handle_top_level_expression<T: BufRead>(parser: &mut Parser, lexer: &mut Lexer<T>) {
     if parser.parse_top_level_expression(lexer).is_some() {
         eprintln!("Parsed a top level expression");
     } else {
@@ -34,7 +34,9 @@ fn handle_top_level_expression(parser: &mut Parser, lexer: &mut TokenConsumer) {
 
 fn main() {
     let mut parser = Parser::new();
-    let mut lexer = TokenConsumer::new(Box::new(std::io::stdin()));
+    let stdin = stdin();
+    let instream_handle = stdin.lock();
+    let mut lexer = Lexer::new(instream_handle);
     lexer.get_next_token();
 
     loop {
