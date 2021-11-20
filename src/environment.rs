@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Environment {
     operator_precedence: HashMap<char, i32>,
 }

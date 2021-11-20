@@ -118,7 +118,7 @@ impl Parser {
             // Try looking up precedence and default to -1 (which is worst than
             // any precedence) if this fails
             let (precedence, op): (i32, Option<char>) = match consumer.current_token() {
-                Some(Token::Misc(c)) if c.is_ascii_alphanumeric() => (
+                Some(Token::Misc(c)) => (
                     self.environment.get_operator_precedence(*c).unwrap_or(-1),
                     Some(*c),
                 ),

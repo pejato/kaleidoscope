@@ -198,35 +198,35 @@ fn test_parse_primary_expr_parses_ident_prefix_into_call() {
     );
 }
 
-// #[test]
-// fn test_parse_primary_expr_parses_paren_expr() {
-//     let reader = "(5 + yar())".as_bytes();
-//     let mut parser = Parser::new();
-//     let mut lexer = Lexer::new(reader);
-//     lexer.get_next_token();
+#[test]
+fn test_parse_primary_expr_parses_paren_expr() {
+    let reader = "(5 + yar())".as_bytes();
+    let mut parser = Parser::new();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
 
-//     let result = parser.parse_primary_expr(&mut lexer);
-//     let expected_lhs = Expr {
-//         kind: ExprKind::Number { value: 5.0 },
-//     };
-//     let expected_rhs = Expr {
-//         kind: ExprKind::Call {
-//             callee: "yar".into(),
-//             args: vec![],
-//         },
-//     };
-//     assert_eq!(
-//         result,
-//         Expr {
-//             kind: ExprKind::Binary {
-//                 lhs: expected_lhs.into(),
-//                 rhs: expected_rhs.into(),
-//                 operator: '+'
-//             }
-//         }
-//         .into()
-//     );
-// }
+    let result = parser.parse_primary_expr(&mut lexer);
+    let expected_lhs = Expr {
+        kind: ExprKind::Number { value: 5.0 },
+    };
+    let expected_rhs = Expr {
+        kind: ExprKind::Call {
+            callee: "yar".into(),
+            args: vec![],
+        },
+    };
+    assert_eq!(
+        result,
+        Expr {
+            kind: ExprKind::Binary {
+                lhs: expected_lhs.into(),
+                rhs: expected_rhs.into(),
+                operator: '+'
+            }
+        }
+        .into()
+    );
+}
 
 // TODO: Pass write stream to use where we use eprintln! currently
 // #[test]
