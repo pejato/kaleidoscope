@@ -44,7 +44,7 @@ impl Parser {
         return result.into();
     }
 
-    pub fn parse_identifier_expr<T: BufRead>(
+    pub fn parse_identifier_prefixed_expr<T: BufRead>(
         &mut self,
         identifier: String,
         consumer: &mut Lexer<T>,
@@ -93,7 +93,9 @@ impl Parser {
 
     pub fn parse_primary_expr<T: BufRead>(&mut self, consumer: &mut Lexer<T>) -> Option<Expr> {
         match consumer.current_token() {
-            Some(Token::Identifier(ident)) => self.parse_identifier_expr(ident.clone(), consumer),
+            Some(Token::Identifier(ident)) => {
+                self.parse_identifier_prefixed_expr(ident.clone(), consumer)
+            }
             Some(Token::Number(num)) => self.parse_number_expr(*num, consumer).into(),
             Some(Token::Misc('(')) => self.parse_paren_expr(consumer),
             _ => self.log_error("unknown token when expecting an expression".into()),
