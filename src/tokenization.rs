@@ -5,6 +5,7 @@ use std::{
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
+    // TODO: Do we need this token?
     EOF,
     Def,
     Extern,
@@ -79,6 +80,8 @@ where
     // Methods
 
     fn try_get_char(&mut self, does_eat_whitespace: bool) -> Option<char> {
+        self.char_buffer = None;
+
         loop {
             // TODO: Improve error handling here
             if read_exact!(self.reader, self.byte_buffer).is_err() {
@@ -96,8 +99,13 @@ where
             }
 
             match self.char_buffer {
-                Some(c) if !does_eat_whitespace && c.is_ascii_whitespace() => (),
-                Some(c) => return Some(c),
+                Some(c) => {
+                    if does_eat_whitespace && c.is_ascii_whitespace() {
+                        ()
+                    } else {
+                        return Some(c);
+                    }
+                }
                 None => return None,
             }
         }
@@ -108,7 +116,10 @@ where
 
         // Check if there's a non-whitespace char already in the buffer
         if self.char_buffer.map_or(true, |c| c.is_ascii_whitespace()) {
-            ch = self.try_get_char(true)?;
+            match self.try_get_char(true) {
+                Some(c) => ch = c,
+                None => return Token::EOF.into(),
+            }
         } else {
             ch = self.char_buffer.unwrap();
         }
@@ -135,7 +146,10 @@ where
 
         loop {
             num_string.push(ch);
-            ch = self.try_get_char(false)?;
+            match self.try_get_char(false) {
+                Some(c) => ch = c,
+                None => break,
+            }
 
             // If we already have a decimal in the number, and this is a decimal,
             // we can't read any more digits => bail.
@@ -156,12 +170,13 @@ where
     fn tok_comment(&mut self) -> Option<Token> {
         loop {
             // Read until a newline character
-            let ch = self.try_get_char(false)?;
+            let result = self.try_get_char(false);
 
-            if Self::is_newline(ch.into()) {
-                // This ignores whitespace, so we'll eat all whitespaces until we get
-                // a token.
-                return self.get_token();
+            match result {
+                // get_token ignores whitespace, so we'll eat whitespaces until we get a token.
+                opt if Self::is_newline(opt) => return self.get_token(),
+                Some(_) => (),
+                None => return Token::EOF.into(),
             }
         }
     }
@@ -172,7 +187,10 @@ where
 
         while ch.is_alphanumeric() {
             ident.push(ch);
-            ch = self.try_get_char(false)?;
+            match self.try_get_char(false) {
+                Some(c) => ch = c,
+                None => break,
+            }
         }
 
         match ident.as_str() {
@@ -192,66 +210,69 @@ mod tests {
 
     #[test]
     fn test_tok_number_valid_integer() {
-        let mut lexer = Lexer::new("123456789".as_bytes());
+        let mut lexer = Lexer::new("23456789".as_bytes());
+        lexer.char_buffer = '1'.into();
         let result = lexer.tok_number();
 
         match result {
             Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
     #[test]
     fn test_tok_number_valid_decimal() {
-        let mut lexer = Lexer::new("123456789.3798901".as_bytes());
+        let mut lexer = Lexer::new("23456789.3798901".as_bytes());
+        lexer.char_buffer = '1'.into();
         let result = lexer.tok_number();
 
         match result {
             Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
     #[test]
-    #[should_panic(
-        // TODO: We really shouldn't be panicking in this situation.
-        expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
-    )]
     fn test_tok_number_too_many_decimal_points() {
-        let mut lexer = Lexer::new("123456789.37989.01".as_bytes());
-        let _ = lexer.tok_number();
+        let mut lexer = Lexer::new("23456789.37989.01".as_bytes());
+        lexer.char_buffer = '1'.into();
+        let result = lexer.tok_number();
+        assert!(result.is_none());
     }
 
     #[test]
     fn test_tok_valid_def() {
-        let mut lexer = Lexer::new("def".as_bytes());
+        let mut lexer = Lexer::new("ef".as_bytes());
+        lexer.char_buffer = 'd'.into();
         let result = lexer.tok_def_extern_or_ident();
 
         match result {
             Some(Token::Def) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
     #[test]
     fn test_tok_valid_extern() {
-        let mut lexer = Lexer::new("extern".as_bytes());
+        let mut lexer = Lexer::new("xtern".as_bytes());
+        lexer.char_buffer = 'e'.into();
         let result = lexer.tok_def_extern_or_ident();
 
         match result {
             Some(Token::Extern) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
     #[test]
     fn test_tok_comment_with_newline_then_eof() {
-        let mut lexer = Lexer::new("# Some text like def extern\n".as_bytes());
+        let mut lexer = Lexer::new(" Some text like def extern\n".as_bytes());
+        lexer.char_buffer = '#'.into();
         let result = lexer.tok_comment();
 
         match result {
             Some(Token::EOF) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -262,7 +283,7 @@ mod tests {
 
         match result {
             Some(Token::EOF) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -273,7 +294,7 @@ mod tests {
 
         match result {
             Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -284,17 +305,15 @@ mod tests {
 
         match result {
             Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
     #[test]
-    #[should_panic(
-        expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
-    )]
     fn test_get_token_too_many_decimal_points() {
         let mut lexer = Lexer::new("123456789.37989.01".as_bytes());
-        let _ = lexer.get_token();
+        let result = lexer.get_token();
+        assert!(result.is_none());
     }
 
     #[test]
@@ -304,7 +323,7 @@ mod tests {
 
         match result {
             Some(Token::Def) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -315,7 +334,7 @@ mod tests {
 
         match result {
             Some(Token::Extern) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -326,7 +345,7 @@ mod tests {
 
         match result {
             Some(Token::EOF) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -337,7 +356,7 @@ mod tests {
 
         match result {
             Some(Token::EOF) => (),
-            _ => assert!(false),
+            _ => assert!(false, "{:#?}", result),
         }
     }
 
@@ -413,6 +432,17 @@ mod tests {
                 false,
                 "Expected {:?} but got {:?}",
                 Token::Misc('+'),
+                result
+            ),
+        }
+
+        result = lexer.get_token();
+        match result {
+            Some(Token::Identifier(s)) if s == "y".to_string() => (),
+            _ => assert!(
+                false,
+                "Expected {:?} but got {:?}",
+                Token::Identifier("y".into()),
                 result
             ),
         }
