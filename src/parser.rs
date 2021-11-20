@@ -267,7 +267,7 @@ mod tests {
     fn test_parse_number_expr_creates_number_expr() {
         let reader = "64 + 3".as_bytes();
         let mut parser = Parser::new();
-        let mut consumer = Lexer::new(Box::new(reader));
+        let mut consumer = Lexer::new(reader);
 
         let result = parser.parse_number_expr(64.0, &mut consumer);
 
@@ -283,7 +283,7 @@ mod tests {
     fn test_parse_number_expr_consumes_token() {
         let reader = "64 + 3".as_bytes();
         let mut parser = Parser::new();
-        let mut consumer = Lexer::new(Box::new(reader));
+        let mut consumer = Lexer::new(reader);
         consumer.get_next_token();
 
         let current_token: Option<Token> = consumer.current_token().clone();
@@ -305,7 +305,7 @@ mod tests {
     fn test_parse_paren_expr() {
         let reader = "(78)".as_bytes();
         let mut parser = Parser::new();
-        let mut consumer = Lexer::new(Box::new(reader));
+        let mut consumer = Lexer::new(reader);
         consumer.get_next_token();
 
         let result = parser.parse_paren_expr(&mut consumer);

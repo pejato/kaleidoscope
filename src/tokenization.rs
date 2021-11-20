@@ -53,17 +53,14 @@ where
 macro_rules! read_exact {
     ($reader: expr, $buf:expr) => {{
         match $reader.read_exact(&mut $buf) {
-            Ok(_) => (),
-            Err(e) if e.kind() == ErrorKind::UnexpectedEof => {
-                eprintln!("Got EOF, exiting...\n");
-                std::process::exit(0);
-            }
+            Ok(_) => Ok(()),
+            Err(e) if e.kind() == ErrorKind::UnexpectedEof => Err(e),
             Err(_) => {
                 eprintln!("Failed to read character while Lexing, exiting...\n");
                 std::process::exit(1);
             }
         }
-    };};
+    }};
 }
 
 impl<T> Lexer<T>
@@ -81,64 +78,64 @@ where
 
     // Methods
 
-    fn try_get_char(&mut self, does_eat_whitespace: bool) -> char {
-        // TODO: Figure out if we can detect if input stream is not unicode
-        // TODO: Pass a closure here to determine when to return a char
+    fn try_get_char(&mut self, does_eat_whitespace: bool) -> Option<char> {
         loop {
-            read_exact!(self.reader, self.byte_buffer);
+            // TODO: Improve error handling here
+            if read_exact!(self.reader, self.byte_buffer).is_err() {
+                return None;
+            }
 
             if self.byte_buffer[0].is_ascii() {
                 self.char_buffer = char::from(self.byte_buffer[0]).into();
+            } else {
+                eprintln!(
+                    "Read non-ASCII byte '{}' while Lexing, exiting...\n",
+                    self.byte_buffer[0]
+                );
+                std::process::exit(1);
             }
 
             match self.char_buffer {
                 Some(c) if !does_eat_whitespace && c.is_ascii_whitespace() => (),
-                Some(c) => {
-                    return c;
-                }
-                None => {
-                    eprintln!(
-                        "Read non-ASCII byte '{}' while Lexing, exiting...\n",
-                        self.byte_buffer[0]
-                    );
-                    std::process::exit(1);
-                }
+                Some(c) => return Some(c),
+                None => return None,
             }
         }
     }
 
-    fn get_token(&mut self) -> Token {
+    fn get_token(&mut self) -> Option<Token> {
         let ch: char;
 
         // Check if there's a non-whitespace char already in the buffer
         if self.char_buffer.map_or(true, |c| c.is_ascii_whitespace()) {
-            ch = self.try_get_char(true);
+            ch = self.try_get_char(true)?;
         } else {
             ch = self.char_buffer.unwrap();
         }
 
         // Def, Extern, or Identifier
         if ch.is_ascii_alphabetic() {
-            return self.tok_def_extern_or_ident();
+            return self.tok_def_extern_or_ident().into();
             // Number
         } else if ch.is_ascii_digit() || ch == '.' {
             return self.tok_number();
             // Comment
         } else if ch == '#' {
-            return self.tok_comment();
+            return self.tok_comment().into();
         }
 
-        Token::Misc(ch)
+        self.try_get_char(false);
+        Token::Misc(ch).into()
     }
 
-    fn tok_number(&mut self) -> Token {
+    fn tok_number(&mut self) -> Option<Token> {
         let mut ch = self.char_buffer.unwrap();
         let mut saw_decimal = ch == '.';
         let mut num_string = String::new();
 
         loop {
             num_string.push(ch);
-            ch = self.try_get_char(false);
+            ch = self.try_get_char(false)?;
 
             // If we already have a decimal in the number, and this is a decimal,
             // we can't read any more digits => bail.
@@ -152,14 +149,14 @@ where
             }
         }
 
-        let num_val = num_string.parse::<f64>().unwrap();
-        return Token::Number(num_val);
+        let num_val = num_string.parse::<f64>().ok()?;
+        return Token::Number(num_val).into();
     }
 
-    fn tok_comment(&mut self) -> Token {
+    fn tok_comment(&mut self) -> Option<Token> {
         loop {
             // Read until a newline character
-            let ch = self.try_get_char(false);
+            let ch = self.try_get_char(false)?;
 
             if Self::is_newline(ch.into()) {
                 // This ignores whitespace, so we'll eat all whitespaces until we get
@@ -169,21 +166,21 @@ where
         }
     }
 
-    // fix calling convention wrt other functions. Either pass the first char or don't
-    fn tok_def_extern_or_ident(&mut self) -> Token {
+    fn tok_def_extern_or_ident(&mut self) -> Option<Token> {
         let mut ident = String::new();
         let mut ch = self.char_buffer.unwrap();
 
         while ch.is_alphanumeric() {
             ident.push(ch);
-            ch = self.try_get_char(false);
+            ch = self.try_get_char(false)?;
         }
 
-        return match ident.as_str() {
+        match ident.as_str() {
             "def" => Token::Def,
             "extern" => Token::Extern,
             _ => Token::Identifier(ident),
-        };
+        }
+        .into()
     }
 }
 
@@ -199,7 +196,7 @@ mod tests {
         let result = lexer.tok_number();
 
         match result {
-            Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
+            Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
             _ => assert!(false),
         }
     }
@@ -210,7 +207,7 @@ mod tests {
         let result = lexer.tok_number();
 
         match result {
-            Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
+            Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
             _ => assert!(false),
         }
     }
@@ -231,7 +228,7 @@ mod tests {
         let result = lexer.tok_def_extern_or_ident();
 
         match result {
-            Token::Def => (),
+            Some(Token::Def) => (),
             _ => assert!(false),
         }
     }
@@ -242,7 +239,7 @@ mod tests {
         let result = lexer.tok_def_extern_or_ident();
 
         match result {
-            Token::Extern => (),
+            Some(Token::Extern) => (),
             _ => assert!(false),
         }
     }
@@ -253,7 +250,7 @@ mod tests {
         let result = lexer.tok_comment();
 
         match result {
-            Token::EOF => (),
+            Some(Token::EOF) => (),
             _ => assert!(false),
         }
     }
@@ -264,7 +261,7 @@ mod tests {
         let result = lexer.tok_comment();
 
         match result {
-            Token::EOF => (),
+            Some(Token::EOF) => (),
             _ => assert!(false),
         }
     }
@@ -275,7 +272,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
+            Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
             _ => assert!(false),
         }
     }
@@ -286,7 +283,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
+            Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
             _ => assert!(false),
         }
     }
@@ -306,7 +303,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::Def => (),
+            Some(Token::Def) => (),
             _ => assert!(false),
         }
     }
@@ -317,7 +314,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::Extern => (),
+            Some(Token::Extern) => (),
             _ => assert!(false),
         }
     }
@@ -328,7 +325,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::EOF => (),
+            Some(Token::EOF) => (),
             _ => assert!(false),
         }
     }
@@ -339,7 +336,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::EOF => (),
+            Some(Token::EOF) => (),
             _ => assert!(false),
         }
     }
@@ -350,7 +347,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::Identifier(s) => assert_eq!(s, "someident".to_string()),
+            Some(Token::Identifier(s)) => assert_eq!(s, "someident".to_string()),
             _ => assert!(false, "Expected Identifier but got {:?}", result),
         }
     }
@@ -361,7 +358,7 @@ mod tests {
         let result = lexer.get_token();
 
         match result {
-            Token::Identifier(s) => assert_eq!(s, "someident78".to_string()),
+            Some(Token::Identifier(s)) => assert_eq!(s, "someident78".to_string()),
             _ => assert!(false, "Expected Identifier but got {:?}", result),
         }
     }
@@ -372,19 +369,19 @@ mod tests {
         let mut result = lexer.get_token();
 
         match result {
-            Token::Def => (),
+            Some(Token::Def) => (),
             _ => assert!(false, "Expected Def but got {:?}", result),
         }
 
         result = lexer.get_token();
         match result {
-            Token::Extern => (),
+            Some(Token::Extern) => (),
             _ => assert!(false, "Expected Extern but got {:?}", result),
         }
 
         result = lexer.get_token();
         match result {
-            Token::Identifier(s) => assert_eq!(s, "someident3".to_string()),
+            Some(Token::Identifier(s)) => assert_eq!(s, "someident3".to_string()),
             _ => assert!(
                 false,
                 "Expected {:?} but got {:?}",
@@ -395,7 +392,7 @@ mod tests {
 
         result = lexer.get_token();
         match result {
-            Token::Number(n) => assert!(
+            Some(Token::Number(n)) => assert!(
                 approx_equal(n, 77.03, 8),
                 "Expected {:?} but got {:?}",
                 Token::Number(77.03),
@@ -411,7 +408,7 @@ mod tests {
 
         result = lexer.get_token();
         match result {
-            Token::Misc(c) => assert_eq!(c, '+'),
+            Some(Token::Misc(c)) => assert_eq!(c, '+'),
             _ => assert!(
                 false,
                 "Expected {:?} but got {:?}",
@@ -422,7 +419,7 @@ mod tests {
 
         result = lexer.get_token();
         match result {
-            Token::EOF => (),
+            Some(Token::EOF) => (),
             _ => assert!(false, "Expected {:?} but got {:?}", Token::EOF, result),
         }
     }
