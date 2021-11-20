@@ -23,29 +23,12 @@ where
     byte_buffer: [u8; 1],
 }
 
-#[macro_export]
-macro_rules! read_exact {
-    ($reader: expr, $buf:expr) => {{
-        match $reader.read_exact(&mut $buf) {
-            Ok(_) => (),
-            Err(e) if e.kind() == ErrorKind::UnexpectedEof => {
-                eprintln!("Got EOF, exiting...\n");
-                std::process::exit(1);
-            }
-            Err(_) => {
-                eprintln!("Failed to read character while Lexing, exiting...\n");
-                std::process::exit(1);
-            }
-        }
-    };};
-}
+// Public Interface
 
 impl<T> Lexer<T>
 where
     T: BufRead,
 {
-    // Free functions
-
     pub fn new(reader: T) -> Self {
         Lexer {
             reader: reader,
@@ -62,7 +45,31 @@ where
     pub fn current_token(&self) -> &Option<Token> {
         &self.buffer
     }
+}
 
+// Private methods
+
+#[macro_export]
+macro_rules! read_exact {
+    ($reader: expr, $buf:expr) => {{
+        match $reader.read_exact(&mut $buf) {
+            Ok(_) => (),
+            Err(e) if e.kind() == ErrorKind::UnexpectedEof => {
+                eprintln!("Got EOF, exiting...\n");
+                std::process::exit(0);
+            }
+            Err(_) => {
+                eprintln!("Failed to read character while Lexing, exiting...\n");
+                std::process::exit(1);
+            }
+        }
+    };};
+}
+
+impl<T> Lexer<T>
+where
+    T: BufRead,
+{
     fn is_newline(c: Option<char>) -> bool {
         if c.is_none() {
             return false;
@@ -89,13 +96,26 @@ where
                 Some(c) => {
                     return c;
                 }
-                None => panic!("Failed to read character while Lexing, exiting...\n"),
+                None => {
+                    eprintln!(
+                        "Read non-ASCII byte '{}' while Lexing, exiting...\n",
+                        self.byte_buffer[0]
+                    );
+                    std::process::exit(1);
+                }
             }
         }
     }
 
     fn get_token(&mut self) -> Token {
-        let ch = self.try_get_char(true);
+        let ch: char;
+
+        // Check if there's a non-whitespace char already in the buffer
+        if self.char_buffer.map_or(true, |c| c.is_ascii_whitespace()) {
+            ch = self.try_get_char(true);
+        } else {
+            ch = self.char_buffer.unwrap();
+        }
 
         // Def, Extern, or Identifier
         if ch.is_ascii_alphabetic() {
@@ -120,7 +140,8 @@ where
             num_string.push(ch);
             ch = self.try_get_char(false);
 
-            // If we already have a decimal in the number, and this is a decimal, we can't read any more digits => bail.
+            // If we already have a decimal in the number, and this is a decimal,
+            // we can't read any more digits => bail.
             if saw_decimal && ch == '.' {
                 break;
             }
@@ -140,7 +161,7 @@ where
             // Read until a newline character
             let ch = self.try_get_char(false);
 
-            if !Self::is_newline(ch.into()) {
+            if Self::is_newline(ch.into()) {
                 // This ignores whitespace, so we'll eat all whitespaces until we get
                 // a token.
                 return self.get_token();
@@ -151,9 +172,11 @@ where
     // fix calling convention wrt other functions. Either pass the first char or don't
     fn tok_def_extern_or_ident(&mut self) -> Token {
         let mut ident = String::new();
+        let mut ch = self.char_buffer.unwrap();
 
-        while self.char_buffer.map_or(false, |c| c.is_alphanumeric()) {
-            ident.push(self.char_buffer.unwrap());
+        while ch.is_alphanumeric() {
+            ident.push(ch);
+            ch = self.try_get_char(false);
         }
 
         return match ident.as_str() {
