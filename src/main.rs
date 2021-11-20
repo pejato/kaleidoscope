@@ -46,20 +46,19 @@ fn main() {
     let stdin = stdin();
     let stdout = stdout();
 
-    let mut outstream_handle = stdout.lock();
     let mut lexer = Lexer::new(stdin.lock());
     lexer.get_next_token();
 
     loop {
-        write!(&mut outstream_handle, "ready>").unwrap();
+        write!(&mut stdout.lock(), "ready>").unwrap();
         match lexer.current_token() {
             Some(Token::EOF) | None => return,
             Some(Token::Misc(';')) => lexer.get_next_token(),
             Some(Token::Def) => {
-                handle_function_definition(&mut parser, &mut lexer, &mut outstream_handle)
+                handle_function_definition(&mut parser, &mut lexer, &mut stdout.lock())
             }
-            Some(Token::Extern) => handle_extern(&mut parser, &mut lexer, &mut outstream_handle),
-            _ => handle_top_level_expression(&mut parser, &mut lexer, &mut outstream_handle),
+            Some(Token::Extern) => handle_extern(&mut parser, &mut lexer, &mut stdout.lock()),
+            _ => handle_top_level_expression(&mut parser, &mut lexer, &mut stdout.lock()),
         }
     }
 }
