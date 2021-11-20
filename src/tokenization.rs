@@ -20,6 +20,7 @@ where
     reader: T,
     buffer: Option<Token>,
     char_buffer: Option<char>,
+    byte_buffer: [u8; 1],
 }
 
 #[macro_export]
@@ -50,6 +51,7 @@ where
             reader: reader,
             buffer: None,
             char_buffer: None,
+            byte_buffer: [0],
         }
     }
 
@@ -72,18 +74,14 @@ where
 
     // Methods
 
-    unsafe fn try_get_char(&mut self, does_eat_whitespace: bool) -> char {
-        if let Some(ch) = self.char_buffer {
-            return ch;
-        }
-        static mut BUF: [u8; 1] = [56];
+    fn try_get_char(&mut self, does_eat_whitespace: bool) -> char {
         // TODO: Figure out if we can detect if input stream is not unicode
         // TODO: Pass a closure here to determine when to return a char
         loop {
-            read_exact!(self.reader, BUF);
+            read_exact!(self.reader, self.byte_buffer);
 
-            if BUF[0].is_ascii() {
-                self.char_buffer = char::from(BUF[0]).into();
+            if self.byte_buffer[0].is_ascii() {
+                self.char_buffer = char::from(self.byte_buffer[0]).into();
             }
 
             match self.char_buffer {
@@ -97,14 +95,14 @@ where
     }
 
     fn get_token(&mut self) -> Token {
-        let ch = unsafe { self.try_get_char(true) };
+        let ch = self.try_get_char(true);
 
         // Def, Extern, or Identifier
         if ch.is_ascii_alphabetic() {
             return self.tok_def_extern_or_ident();
             // Number
         } else if ch.is_ascii_digit() || ch == '.' {
-            return self.tok_number(ch);
+            return self.tok_number();
             // Comment
         } else if ch == '#' {
             return self.tok_comment();
@@ -113,13 +111,14 @@ where
         Token::Misc(ch)
     }
 
-    fn tok_number(&mut self, ch: char) -> Token {
+    fn tok_number(&mut self) -> Token {
+        let mut ch = self.char_buffer.unwrap();
         let mut saw_decimal = ch == '.';
         let mut num_string = String::new();
 
         loop {
             num_string.push(ch);
-            let ch = unsafe { self.try_get_char(false) };
+            ch = self.try_get_char(false);
 
             // If we already have a decimal in the number, and this is a decimal, we can't read any more digits => bail.
             if saw_decimal && ch == '.' {
@@ -139,7 +138,7 @@ where
     fn tok_comment(&mut self) -> Token {
         loop {
             // Read until a newline character
-            let ch = unsafe { self.try_get_char(false) };
+            let ch = self.try_get_char(false);
 
             if !Self::is_newline(ch.into()) {
                 // This ignores whitespace, so we'll eat all whitespaces until we get
@@ -149,6 +148,7 @@ where
         }
     }
 
+    // fix calling convention wrt other functions. Either pass the first char or don't
     fn tok_def_extern_or_ident(&mut self) -> Token {
         let mut ident = String::new();
 
@@ -172,8 +172,8 @@ mod tests {
 
     #[test]
     fn test_tok_number_valid_integer() {
-        let mut lexer = Lexer::new("23456789".as_bytes());
-        let result = lexer.tok_number('1');
+        let mut lexer = Lexer::new("123456789".as_bytes());
+        let result = lexer.tok_number();
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.0, 15)),
@@ -183,8 +183,8 @@ mod tests {
 
     #[test]
     fn test_tok_number_valid_decimal() {
-        let mut lexer = Lexer::new("23456789.3798901".as_bytes());
-        let result = lexer.tok_number('1');
+        let mut lexer = Lexer::new("123456789.3798901".as_bytes());
+        let result = lexer.tok_number();
 
         match result {
             Token::Number(n) => assert!(approx_equal(n, 123456789.3798901, 15)),
@@ -198,8 +198,8 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: ParseFloatError { kind: Invalid }"
     )]
     fn test_tok_number_too_many_decimal_points() {
-        let mut lexer = Lexer::new("23456789.37989.01".as_bytes());
-        let _ = lexer.tok_number('1');
+        let mut lexer = Lexer::new("123456789.37989.01".as_bytes());
+        let _ = lexer.tok_number();
     }
 
     #[test]
