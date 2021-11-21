@@ -1,5 +1,5 @@
-
 use crate::test_utilities::test::approx_equal;
+use crate::tokenization::Token::*;
 
 use super::*;
 
@@ -10,7 +10,7 @@ fn test_tok_number_valid_integer() {
     let result = lexer.tok_number();
 
     match result {
-        Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
+        Some(Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -22,7 +22,7 @@ fn test_tok_number_valid_decimal() {
     let result = lexer.tok_number();
 
     match result {
-        Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
+        Some(Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -42,7 +42,7 @@ fn test_tok_valid_def() {
     let result = lexer.tok_def_extern_or_ident();
 
     match result {
-        Some(Token::Def) => (),
+        Some(Def) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -54,7 +54,7 @@ fn test_tok_valid_extern() {
     let result = lexer.tok_def_extern_or_ident();
 
     match result {
-        Some(Token::Extern) => (),
+        Some(Extern) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -66,7 +66,7 @@ fn test_tok_comment_with_newline_then_eof() {
     let result = lexer.tok_comment();
 
     match result {
-        Some(Token::EOF) => (),
+        Some(EOF) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -77,7 +77,7 @@ fn test_tok_comment_with_no_newline_then_eof() {
     let result = lexer.tok_comment();
 
     match result {
-        Some(Token::EOF) => (),
+        Some(EOF) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -88,7 +88,7 @@ fn test_get_token_valid_integer() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
+        Some(Number(n)) => assert!(approx_equal(n, 123456789.0, 15)),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -99,7 +99,7 @@ fn test_get_token_valid_decimal() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
+        Some(Number(n)) => assert!(approx_equal(n, 123456789.3798901, 15)),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -117,7 +117,7 @@ fn test_get_token_def() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::Def) => (),
+        Some(Def) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -128,7 +128,7 @@ fn test_get_token_extern() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::Extern) => (),
+        Some(Extern) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -139,7 +139,7 @@ fn test_get_token_with_comment_newline_then_eof() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::EOF) => (),
+        Some(EOF) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -150,7 +150,7 @@ fn test_get_token_with_comment_no_newline_then_eof() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::EOF) => (),
+        Some(EOF) => (),
         _ => assert!(false, "{:#?}", result),
     }
 }
@@ -161,7 +161,7 @@ fn test_get_token_alpha_ident() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::Identifier(s)) => assert_eq!(s, "someident".to_string()),
+        Some(Identifier(s)) => assert_eq!(s, "someident".to_string()),
         _ => assert!(false, "Expected Identifier but got {:?}", result),
     }
 }
@@ -172,7 +172,7 @@ fn test_get_token_alphanumeric_ident() {
     let result = lexer.get_token();
 
     match result {
-        Some(Token::Identifier(s)) => assert_eq!(s, "someident78".to_string()),
+        Some(Identifier(s)) => assert_eq!(s, "someident78".to_string()),
         _ => assert!(false, "Expected Identifier but got {:?}", result),
     }
 }
@@ -183,68 +183,58 @@ fn test_get_token_integration_all_tokens() {
     let mut result = lexer.get_token();
 
     match result {
-        Some(Token::Def) => (),
+        Some(Def) => (),
         _ => assert!(false, "Expected Def but got {:?}", result),
     }
 
     result = lexer.get_token();
     match result {
-        Some(Token::Extern) => (),
+        Some(Extern) => (),
         _ => assert!(false, "Expected Extern but got {:?}", result),
     }
 
     result = lexer.get_token();
     match result {
-        Some(Token::Identifier(s)) => assert_eq!(s, "someident3".to_string()),
+        Some(Identifier(s)) => assert_eq!(s, "someident3".to_string()),
         _ => assert!(
             false,
             "Expected {:?} but got {:?}",
-            Token::Identifier("someident3".to_string()),
+            Identifier("someident3".to_string()),
             result
         ),
     }
 
     result = lexer.get_token();
     match result {
-        Some(Token::Number(n)) => assert!(
+        Some(Number(n)) => assert!(
             approx_equal(n, 77.03, 8),
             "Expected {:?} but got {:?}",
-            Token::Number(77.03),
+            Number(77.03),
             n
         ),
+        _ => assert!(false, "Expected {:?} but got {:?}", Number(77.03), result),
+    }
+
+    result = lexer.get_token();
+    match result {
+        Some(Misc(c)) => assert_eq!(c, '+'),
+        _ => assert!(false, "Expected {:?} but got {:?}", Misc('+'), result),
+    }
+
+    result = lexer.get_token();
+    match result {
+        Some(Identifier(s)) if s == "y".to_string() => (),
         _ => assert!(
             false,
             "Expected {:?} but got {:?}",
-            Token::Number(77.03),
+            Identifier("y".into()),
             result
         ),
     }
 
     result = lexer.get_token();
     match result {
-        Some(Token::Misc(c)) => assert_eq!(c, '+'),
-        _ => assert!(
-            false,
-            "Expected {:?} but got {:?}",
-            Token::Misc('+'),
-            result
-        ),
-    }
-
-    result = lexer.get_token();
-    match result {
-        Some(Token::Identifier(s)) if s == "y".to_string() => (),
-        _ => assert!(
-            false,
-            "Expected {:?} but got {:?}",
-            Token::Identifier("y".into()),
-            result
-        ),
-    }
-
-    result = lexer.get_token();
-    match result {
-        Some(Token::EOF) => (),
-        _ => assert!(false, "Expected {:?} but got {:?}", Token::EOF, result),
+        Some(EOF) => (),
+        _ => assert!(false, "Expected {:?} but got {:?}", EOF, result),
     }
 }
