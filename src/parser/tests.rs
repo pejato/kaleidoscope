@@ -229,5 +229,13 @@ fn test_parse_primary_expr_parses_paren_expr() {
 }
 
 // TODO: Pass write stream to use where we use eprintln! currently
-// #[test]
-// fn test_parse_primary_expr_logs_error() {}
+#[test]
+fn test_parse_primary_expr_logs_error() {
+    let reader = "def".as_bytes();
+    let mut parser = Parser::new();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
+
+    let result = parser.parse_primary_expr(&mut lexer);
+    assert_eq!(result, None);
+}
