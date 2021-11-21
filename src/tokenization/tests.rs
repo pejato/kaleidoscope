@@ -1,5 +1,6 @@
 use crate::test_utilities::test::approx_equal;
 use crate::tokenization::Token::*;
+use pretty_assertions::assert_eq;
 
 use super::*;
 

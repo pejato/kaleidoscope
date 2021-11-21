@@ -1,6 +1,7 @@
 use super::*;
 use crate::parser::ExprKind::*;
 use crate::test_utilities::test::approx_equal;
+use pretty_assertions::assert_eq;
 
 #[test]
 fn test_new_sets_up_operator_precedences() {
