@@ -136,9 +136,7 @@ impl Parser {
 
             // Checking if there is a higher precedence operator to the RHS
             let next_precedence = match lexer.current_token() {
-                Some(Token::Misc(c)) if c.is_ascii_alphanumeric() => {
-                    self.environment.get_operator_precedence(*c).unwrap_or(-1)
-                }
+                Some(Token::Misc(c)) => self.environment.get_operator_precedence(*c).unwrap_or(-1),
                 _ => -1,
             };
             if next_precedence > precedence {

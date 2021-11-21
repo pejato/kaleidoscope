@@ -1,4 +1,5 @@
 use super::*;
+use crate::parser::ExprKind::*;
 use crate::test_utilities::test::approx_equal;
 
 #[test]
@@ -21,7 +22,7 @@ fn test_parse_number_expr_creates_number_expr() {
 
     match result {
         Expr {
-            kind: ExprKind::Number { value: val },
+            kind: Number { value: val },
         } => assert!(approx_equal(64.0, val, 5)),
         _ => assert!(false, "Expected ExprKind::Number"),
     }
@@ -60,7 +61,7 @@ fn test_parse_paren_expr() {
 
     match result {
         Some(Expr {
-            kind: ExprKind::Number { value: val },
+            kind: Number { value: val },
         }) => assert!(approx_equal(val, 78.0, 5)),
         _ => assert!(false, "Expected Expr::Kind(Number(78))"),
     }
@@ -76,7 +77,7 @@ fn test_parse_identifier_prefixed_expr_parses_variable() {
     let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
 
     let expected_value = Expr {
-        kind: ExprKind::Variable {
+        kind: Variable {
             name: "ident42".into(),
         },
     };
@@ -96,9 +97,9 @@ fn test_parse_identifier_prefixed_expr_parses_call() {
     let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
 
     let expected_value = Expr {
-        kind: ExprKind::Call {
+        kind: Call {
             args: vec![Expr {
-                kind: ExprKind::Number { value: 30.0 },
+                kind: Number { value: 30.0 },
             }],
             callee: "ident42".into(),
         },
@@ -120,16 +121,16 @@ fn test_parse_identifier_prefixed_expr_parsed_call_multiple_args() {
     let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
 
     let expected_value = Expr {
-        kind: ExprKind::Call {
+        kind: Call {
             args: vec![
                 Expr {
-                    kind: ExprKind::Number { value: 30.0 },
+                    kind: Number { value: 30.0 },
                 },
                 Expr {
-                    kind: ExprKind::Number { value: 60.0 },
+                    kind: Number { value: 60.0 },
                 },
                 Expr {
-                    kind: ExprKind::Number { value: 90.0 },
+                    kind: Number { value: 90.0 },
                 },
             ],
             callee: "ident42".into(),
@@ -153,7 +154,7 @@ fn test_parse_primary_expr_parses_number() {
     assert_eq!(
         result,
         Expr {
-            kind: ExprKind::Number { value: 657.0 }
+            kind: Number { value: 657.0 }
         }
         .into()
     );
@@ -170,7 +171,7 @@ fn test_parse_primary_expr_parses_ident_prefix_into_variable() {
     assert_eq!(
         result,
         Expr {
-            kind: ExprKind::Variable {
+            kind: Variable {
                 name: "suwooooo".into()
             }
         }
@@ -189,7 +190,7 @@ fn test_parse_primary_expr_parses_ident_prefix_into_call() {
     assert_eq!(
         result,
         Expr {
-            kind: ExprKind::Call {
+            kind: Call {
                 args: vec![],
                 callee: "suwooooo".into()
             }
@@ -207,10 +208,10 @@ fn test_parse_primary_expr_parses_paren_expr() {
 
     let result = parser.parse_primary_expr(&mut lexer);
     let expected_lhs = Expr {
-        kind: ExprKind::Number { value: 5.0 },
+        kind: Number { value: 5.0 },
     };
     let expected_rhs = Expr {
-        kind: ExprKind::Call {
+        kind: Call {
             callee: "yar".into(),
             args: vec![],
         },
@@ -218,7 +219,7 @@ fn test_parse_primary_expr_parses_paren_expr() {
     assert_eq!(
         result,
         Expr {
-            kind: ExprKind::Binary {
+            kind: Binary {
                 lhs: expected_lhs.into(),
                 rhs: expected_rhs.into(),
                 operator: '+'
@@ -238,4 +239,63 @@ fn test_parse_primary_expr_logs_error() {
 
     let result = parser.parse_primary_expr(&mut lexer);
     assert_eq!(result, None);
+}
+
+#[test]
+fn test_parse_multiple_ops() {
+    let reader = "3 + 2 - 4 * 7 < 3".as_bytes();
+    let mut parser = Parser::new();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
+
+    let result = parser.parse_expression(&mut lexer);
+    // This is a mess to look at, but it represents (3 + (2 - (4 * 7))) < 3
+    let expected_result = Expr {
+        kind: Binary {
+            operator: '<',
+            lhs: Expr {
+                kind: Binary {
+                    operator: '+',
+                    lhs: Expr {
+                        kind: Number { value: 3.0 },
+                    }
+                    .into(),
+                    rhs: Expr {
+                        kind: Binary {
+                            operator: '-',
+                            lhs: Expr {
+                                kind: Number { value: 2.0 },
+                            }
+                            .into(),
+                            rhs: Expr {
+                                kind: Binary {
+                                    operator: '*',
+                                    lhs: Expr {
+                                        kind: Number { value: 4.0 },
+                                    }
+                                    .into(),
+                                    rhs: Expr {
+                                        kind: Number { value: 7.0 },
+                                    }
+                                    .into(),
+                                },
+                            }
+                            .into(),
+                        }
+                        .into(),
+                    }
+                    .into(),
+                }
+                .into(),
+            }
+            .into(),
+            rhs: Expr {
+                kind: Number { value: 3.0 },
+            }
+            .into(),
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
 }
