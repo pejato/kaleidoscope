@@ -15,9 +15,9 @@ fn test_new_sets_up_operator_precedences() {
 fn test_parse_number_expr_creates_number_expr() {
     let reader = "64 + 3".as_bytes();
     let mut parser = Parser::new();
-    let mut consumer = Lexer::new(reader);
+    let mut lexer = Lexer::new(reader);
 
-    let result = parser.parse_number_expr(64.0, &mut consumer);
+    let result = parser.parse_number_expr(64.0, &mut lexer);
 
     match result {
         Expr {
@@ -31,19 +31,19 @@ fn test_parse_number_expr_creates_number_expr() {
 fn test_parse_number_expr_consumes_token() {
     let reader = "64 + 3".as_bytes();
     let mut parser = Parser::new();
-    let mut consumer = Lexer::new(reader);
-    consumer.get_next_token();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
 
-    let current_token: Option<Token> = consumer.current_token().clone();
+    let current_token: Option<Token> = lexer.current_token().clone();
     match current_token {
         Some(Token::Number(num)) => {
-            parser.parse_number_expr(num, &mut consumer);
+            parser.parse_number_expr(num, &mut lexer);
             assert!(approx_equal(64.0, num, 5))
         }
         _ => assert!(false, "Expected Token::Number(64.0)"),
     }
 
-    match consumer.current_token() {
+    match lexer.current_token() {
         Some(Token::Misc('+')) => (),
         _ => assert!(false, "Expected '+'"),
     }
@@ -53,10 +53,10 @@ fn test_parse_number_expr_consumes_token() {
 fn test_parse_paren_expr() {
     let reader = "(78)".as_bytes();
     let mut parser = Parser::new();
-    let mut consumer = Lexer::new(reader);
-    consumer.get_next_token();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
 
-    let result = parser.parse_paren_expr(&mut consumer);
+    let result = parser.parse_paren_expr(&mut lexer);
 
     match result {
         Some(Expr {
@@ -70,10 +70,10 @@ fn test_parse_paren_expr() {
 fn test_parse_identifier_prefixed_expr_parses_variable() {
     let reader = "ident42".as_bytes();
     let mut parser = Parser::new();
-    let mut consumer = Lexer::new(reader);
-    consumer.get_next_token();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
 
-    let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut consumer);
+    let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
 
     let expected_value = Expr {
         kind: ExprKind::Variable {
@@ -90,10 +90,10 @@ fn test_parse_identifier_prefixed_expr_parses_variable() {
 fn test_parse_identifier_prefixed_expr_parses_call() {
     let reader = "ident42(30)".as_bytes();
     let mut parser = Parser::new();
-    let mut consumer = Lexer::new(reader);
-    consumer.get_next_token();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
 
-    let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut consumer);
+    let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
 
     let expected_value = Expr {
         kind: ExprKind::Call {
@@ -114,10 +114,10 @@ fn test_parse_identifier_prefixed_expr_parses_call() {
 fn test_parse_identifier_prefixed_expr_parsed_call_multiple_args() {
     let reader = "ident66(30, 60, 90)".as_bytes();
     let mut parser = Parser::new();
-    let mut consumer = Lexer::new(reader);
-    consumer.get_next_token();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
 
-    let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut consumer);
+    let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
 
     let expected_value = Expr {
         kind: ExprKind::Call {
