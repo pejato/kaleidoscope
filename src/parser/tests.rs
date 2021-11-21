@@ -21,9 +21,7 @@ fn test_parse_number_expr_creates_number_expr() {
     let result = parser.parse_number_expr(64.0, &mut lexer);
 
     match result {
-        Expr {
-            kind: Number { value: val },
-        } => assert!(approx_equal(64.0, val, 5)),
+        Expr { kind: Number(val) } => assert!(approx_equal(64.0, val, 5)),
         _ => assert!(false, "Expected ExprKind::Number"),
     }
 }
@@ -60,9 +58,7 @@ fn test_parse_paren_expr() {
     let result = parser.parse_paren_expr(&mut lexer);
 
     match result {
-        Some(Expr {
-            kind: Number { value: val },
-        }) => assert!(approx_equal(val, 78.0, 5)),
+        Some(Expr { kind: Number(val) }) => assert!(approx_equal(val, 78.0, 5)),
         _ => assert!(false, "Expected Expr::Kind(Number(78))"),
     }
 }
@@ -98,9 +94,7 @@ fn test_parse_identifier_prefixed_expr_parses_call() {
 
     let expected_value = Expr {
         kind: Call {
-            args: vec![Expr {
-                kind: Number { value: 30.0 },
-            }],
+            args: vec![Expr { kind: Number(30.0) }],
             callee: "ident42".into(),
         },
     };
@@ -123,15 +117,9 @@ fn test_parse_identifier_prefixed_expr_parsed_call_multiple_args() {
     let expected_value = Expr {
         kind: Call {
             args: vec![
-                Expr {
-                    kind: Number { value: 30.0 },
-                },
-                Expr {
-                    kind: Number { value: 60.0 },
-                },
-                Expr {
-                    kind: Number { value: 90.0 },
-                },
+                Expr { kind: Number(30.0) },
+                Expr { kind: Number(60.0) },
+                Expr { kind: Number(90.0) },
             ],
             callee: "ident42".into(),
         },
@@ -154,7 +142,7 @@ fn test_parse_primary_expr_parses_number() {
     assert_eq!(
         result,
         Expr {
-            kind: Number { value: 657.0 }
+            kind: Number(657.0)
         }
         .into()
     );
@@ -207,9 +195,7 @@ fn test_parse_primary_expr_parses_paren_expr() {
     lexer.get_next_token();
 
     let result = parser.parse_primary_expr(&mut lexer);
-    let expected_lhs = Expr {
-        kind: Number { value: 5.0 },
-    };
+    let expected_lhs = Expr { kind: Number(5.0) };
     let expected_rhs = Expr {
         kind: Call {
             callee: "yar".into(),
@@ -256,28 +242,16 @@ fn test_parse_multiple_ops() {
             lhs: Expr {
                 kind: Binary {
                     operator: '+',
-                    lhs: Expr {
-                        kind: Number { value: 3.0 },
-                    }
-                    .into(),
+                    lhs: Expr { kind: Number(3.0) }.into(),
                     rhs: Expr {
                         kind: Binary {
                             operator: '-',
-                            lhs: Expr {
-                                kind: Number { value: 2.0 },
-                            }
-                            .into(),
+                            lhs: Expr { kind: Number(2.0) }.into(),
                             rhs: Expr {
                                 kind: Binary {
                                     operator: '*',
-                                    lhs: Expr {
-                                        kind: Number { value: 4.0 },
-                                    }
-                                    .into(),
-                                    rhs: Expr {
-                                        kind: Number { value: 7.0 },
-                                    }
-                                    .into(),
+                                    lhs: Expr { kind: Number(4.0) }.into(),
+                                    rhs: Expr { kind: Number(7.0) }.into(),
                                 },
                             }
                             .into(),
@@ -289,10 +263,41 @@ fn test_parse_multiple_ops() {
                 .into(),
             }
             .into(),
-            rhs: Expr {
-                kind: Number { value: 3.0 },
+            rhs: Expr { kind: Number(3.0) }.into(),
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_multiple_add_ops() {
+    let reader = "1+2+3+4".as_bytes();
+    let mut parser = Parser::new();
+    let mut lexer = Lexer::new(reader);
+    lexer.get_next_token();
+
+    let result = parser.parse_expression(&mut lexer);
+    let expected_result = Expr {
+        kind: Binary {
+            operator: '+',
+            lhs: Expr {
+                kind: Binary {
+                    operator: '+',
+                    lhs: Expr {
+                        kind: Binary {
+                            operator: '+',
+                            lhs: Expr { kind: Number(1.0) }.into(),
+                            rhs: Expr { kind: Number(2.0) }.into(),
+                        },
+                    }
+                    .into(),
+                    rhs: Expr { kind: Number(3.0) }.into(),
+                },
             }
             .into(),
+            rhs: Expr { kind: Number(4.0) }.into(),
         },
     }
     .into();

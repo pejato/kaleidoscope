@@ -21,7 +21,7 @@ impl Parser {
     // Primary expression parsing
     pub fn parse_number_expr<T: BufRead>(&mut self, value: f64, lexer: &mut Lexer<T>) -> Expr {
         let result = Expr {
-            kind: ExprKind::Number { value },
+            kind: ExprKind::Number(value),
         };
         lexer.get_next_token();
         return result;

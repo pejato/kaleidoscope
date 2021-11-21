@@ -4,9 +4,7 @@ pub struct Expr {
 }
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum ExprKind {
-    Number {
-        value: f64,
-    },
+    Number(f64),
     Variable {
         name: String,
     },
