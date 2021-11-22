@@ -3,6 +3,17 @@ use crate::parser::ExprKind::*;
 use crate::test_utilities::test::approx_equal;
 use pretty_assertions::assert_eq;
 
+#[macro_export]
+macro_rules! setup_parser_lexer {
+    ($input_string: literal) => {
+        (Parser::new(), {
+            let mut lexer = Lexer::new($input_string.as_bytes());
+            lexer.get_next_token();
+            lexer
+        })
+    };
+}
+
 #[test]
 fn test_new_sets_up_operator_precedences() {
     let parser = Parser::new();
@@ -15,11 +26,9 @@ fn test_new_sets_up_operator_precedences() {
 
 #[test]
 fn test_parse_number_expr_creates_number_expr() {
-    let reader = "64 + 3".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
+    let (mut parser, mut lexer) = setup_parser_lexer!("64 + 3");
 
-    let result = parser.parse_number_expr(64.0, &mut lexer);
+    let result = parser.parse_number_expr(&mut lexer);
 
     match result {
         Expr { kind: Number(val) } => assert!(approx_equal(64.0, val, 5)),
@@ -29,15 +38,13 @@ fn test_parse_number_expr_creates_number_expr() {
 
 #[test]
 fn test_parse_number_expr_consumes_token() {
-    let reader = "64 + 3".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("64 + 3");
 
     let current_token: Option<Token> = lexer.current_token().clone();
+
     match current_token {
         Some(Token::Number(num)) => {
-            parser.parse_number_expr(num, &mut lexer);
+            parser.parse_number_expr(&mut lexer);
             assert!(approx_equal(64.0, num, 5))
         }
         _ => assert!(false, "Expected Token::Number(64.0)"),
@@ -51,10 +58,7 @@ fn test_parse_number_expr_consumes_token() {
 
 #[test]
 fn test_parse_paren_expr() {
-    let reader = "(78)".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("(78)");
 
     let result = parser.parse_paren_expr(&mut lexer);
 
@@ -66,13 +70,9 @@ fn test_parse_paren_expr() {
 
 #[test]
 fn test_parse_identifier_prefixed_expr_parses_variable() {
-    let reader = "ident42".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("ident42");
 
     let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
-
     let expected_value = Expr {
         kind: Variable {
             name: "ident42".into(),
@@ -86,13 +86,9 @@ fn test_parse_identifier_prefixed_expr_parses_variable() {
 
 #[test]
 fn test_parse_identifier_prefixed_expr_parses_call() {
-    let reader = "ident42(30)".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("ident42(30)");
 
     let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
-
     let expected_value = Expr {
         kind: Call {
             args: vec![Expr { kind: Number(30.0) }],
@@ -108,13 +104,9 @@ fn test_parse_identifier_prefixed_expr_parses_call() {
 
 #[test]
 fn test_parse_identifier_prefixed_expr_parsed_call_multiple_args() {
-    let reader = "ident66(30, 60, 90)".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("ident66(30, 60, 90)");
 
     let result = parser.parse_identifier_prefixed_expr("ident42".into(), &mut lexer);
-
     let expected_value = Expr {
         kind: Call {
             args: vec![
@@ -133,10 +125,7 @@ fn test_parse_identifier_prefixed_expr_parsed_call_multiple_args() {
 
 #[test]
 fn test_parse_primary_expr_parses_number() {
-    let reader = "657".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("657");
 
     let result = parser.parse_primary_expr(&mut lexer);
 
@@ -151,10 +140,7 @@ fn test_parse_primary_expr_parses_number() {
 
 #[test]
 fn test_parse_primary_expr_parses_ident_prefix_into_variable() {
-    let reader = "suwooooo".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("suwooooo");
 
     let result = parser.parse_primary_expr(&mut lexer);
     assert_eq!(
@@ -170,10 +156,7 @@ fn test_parse_primary_expr_parses_ident_prefix_into_variable() {
 
 #[test]
 fn test_parse_primary_expr_parses_ident_prefix_into_call() {
-    let reader = "suwooooo()".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("suwooooo()");
 
     let result = parser.parse_primary_expr(&mut lexer);
     assert_eq!(
@@ -190,39 +173,31 @@ fn test_parse_primary_expr_parses_ident_prefix_into_call() {
 
 #[test]
 fn test_parse_primary_expr_parses_paren_expr() {
-    let reader = "(5 + yar())".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("(5 + yar())");
 
     let result = parser.parse_primary_expr(&mut lexer);
-    let expected_lhs = Expr { kind: Number(5.0) };
-    let expected_rhs = Expr {
-        kind: Call {
-            callee: "yar".into(),
-            args: vec![],
-        },
-    };
-    assert_eq!(
-        result,
-        Expr {
-            kind: Binary {
-                lhs: expected_lhs.into(),
-                rhs: expected_rhs.into(),
-                operator: '+'
+    let expected_result = Expr {
+        kind: Binary {
+            lhs: Expr { kind: Number(5.0) }.into(),
+            rhs: Expr {
+                kind: Call {
+                    callee: "yar".into(),
+                    args: vec![],
+                },
             }
-        }
-        .into()
-    );
+            .into(),
+            operator: '+',
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
 }
 
 // TODO: Pass write stream to use where we use eprintln! currently
 #[test]
 fn test_parse_primary_expr_logs_error() {
-    let reader = "def".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("def");
 
     let result = parser.parse_primary_expr(&mut lexer);
     assert_eq!(result, None);
@@ -230,10 +205,7 @@ fn test_parse_primary_expr_logs_error() {
 
 #[test]
 fn test_parse_multiple_ops() {
-    let reader = "3 + 2 - 4 * 7 < 3".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("3 + 2 - 4 * 7 < 3");
 
     let result = parser.parse_expression(&mut lexer);
     // This is a mess to look at, but it represents (3 + (2 - (4 * 7))) < 3
@@ -274,10 +246,7 @@ fn test_parse_multiple_ops() {
 
 #[test]
 fn test_parse_multiple_add_ops() {
-    let reader = "1+2+3+4".as_bytes();
-    let mut parser = Parser::new();
-    let mut lexer = Lexer::new(reader);
-    lexer.get_next_token();
+    let (mut parser, mut lexer) = setup_parser_lexer!("1+2+3+4");
 
     let result = parser.parse_expression(&mut lexer);
     let expected_result = Expr {

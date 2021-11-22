@@ -52,7 +52,7 @@ where
 
 #[macro_export]
 macro_rules! read_exact {
-    ($reader: expr, $buf:expr) => {{
+    ($reader: expr, $buf:expr) => {
         match $reader.read_exact(&mut $buf) {
             Ok(_) => Ok(()),
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => Err(e),
@@ -61,7 +61,7 @@ macro_rules! read_exact {
                 std::process::exit(1);
             }
         }
-    }};
+    };
 }
 
 impl<T> Lexer<T>

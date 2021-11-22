@@ -19,7 +19,11 @@ impl Parser {
     }
 
     // Primary expression parsing
-    pub fn parse_number_expr<T: BufRead>(&mut self, value: f64, lexer: &mut Lexer<T>) -> Expr {
+    pub fn parse_number_expr<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Expr {
+        let value = match lexer.current_token() {
+            Some(Token::Number(v)) => *v,
+            _ => unreachable!("lexer should have loaded a Number prior to calling this"),
+        };
         let result = Expr {
             kind: ExprKind::Number(value),
         };
@@ -96,7 +100,7 @@ impl Parser {
             Some(Token::Identifier(ident)) => {
                 self.parse_identifier_prefixed_expr(ident.clone(), lexer)
             }
-            Some(Token::Number(num)) => self.parse_number_expr(*num, lexer).into(),
+            Some(Token::Number(_)) => self.parse_number_expr(lexer).into(),
             Some(Token::Misc('(')) => self.parse_paren_expr(lexer),
             _ => self.log_error("unknown token when expecting an expression".into()),
         }
