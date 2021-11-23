@@ -164,7 +164,10 @@ impl Parser {
         };
 
         if func_name.is_none() {
-            return self.log_error("Expected function name in protype".into());
+            return self.log_error(format!(
+                "Expected function name in protype,\n  got {:#?}",
+                lexer.current_token()
+            ));
         }
 
         let func_name = func_name.unwrap();
@@ -173,7 +176,12 @@ impl Parser {
         // Opening (
         match lexer.current_token() {
             Some(Token::Misc('(')) => (),
-            _ => return self.log_error("Expected '(' in prototype".into()),
+            _ => {
+                return self.log_error(format!(
+                    "Expected '(' in prototype,\n  got {:#?}",
+                    lexer.current_token()
+                ))
+            }
         }
         lexer.get_next_token();
 
@@ -183,12 +191,34 @@ impl Parser {
             _ => None,
         } {
             arg_names.push(ident.to_string());
+            // This should be a ','
             lexer.get_next_token();
+
+            match lexer.current_token() {
+                // Reached the end of the arguments, keep this in the lexer's
+                // buffer for the match following this loop
+                Some(Token::Misc(')')) => (),
+                // Another argument may follow (we allow trailing commas)
+                Some(Token::Misc(',')) => lexer.get_next_token(),
+                _ => {
+                    return self.log_error(format!(
+                        "Expected ',' or ')' in prototype,\n  got {:#?}",
+                        lexer.current_token()
+                    ))
+                }
+            }
         }
+
+        eprintln!("{:#?}", arg_names);
 
         match lexer.current_token() {
             Some(Token::Misc(')')) => (),
-            _ => return self.log_error("Expected ')' in prototype".into()),
+            _ => {
+                return self.log_error(format!(
+                    "Expected ')' in prototype,\n  got {:#?}",
+                    lexer.current_token()
+                ))
+            }
         }
         lexer.get_next_token();
 

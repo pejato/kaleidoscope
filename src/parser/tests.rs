@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::*;
 use crate::parser::ExprKind::*;
 use crate::test_utilities::test::approx_equal;
@@ -268,6 +270,26 @@ fn test_parse_multiple_add_ops() {
             }
             .into(),
             rhs: Expr { kind: Number(4.0) }.into(),
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_function_proto() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("fn(three, four, five)");
+
+    let result = parser.parse_function_prototype(&mut lexer);
+    let expected_result = Expr {
+        kind: Prototype {
+            name: "fn".to_owned(),
+            args: vec![
+                String::from_str("three").unwrap(),
+                String::from_str("four").unwrap(),
+                String::from_str("five").unwrap(),
+            ],
         },
     }
     .into();
