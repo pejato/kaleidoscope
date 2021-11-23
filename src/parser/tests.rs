@@ -281,7 +281,7 @@ fn test_parse_multiple_add_ops() {
 }
 
 #[test]
-fn test_parse_function_proto_legal() {
+fn test_parse_function_proto_legal_basic() {
     let (mut parser, mut lexer) = setup_parser_lexer!("fn(three, four, five)");
 
     let result = parser.parse_function_prototype(&mut lexer);

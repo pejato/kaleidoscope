@@ -1,17 +1,45 @@
-use std::io::BufRead;
-
 use crate::{
     ast::{Expr, ExprKind},
     environment::Environment,
-    tokenization::{Lex, Lexer, Token},
+    tokenization::{Lex, Token},
 };
+
+pub trait Parse {
+    fn new() -> Self;
+    fn parse_number_expr<L: Lex>(&mut self, lexer: &mut L) -> Expr;
+    fn parse_paren_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+    fn parse_identifier_prefixed_expr<L: Lex>(
+        &mut self,
+        identifier: String,
+        lexer: &mut L,
+    ) -> Option<Expr>;
+    fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+    fn parse_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+    fn parse_binary_op_rhs<L: Lex>(
+        &mut self,
+        lowest_edible_op_precedence: i32,
+        lhs: Expr,
+        lexer: &mut L,
+    ) -> Option<Expr>;
+    fn parse_function_prototype<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+    fn parse_function_definition<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+    fn parse_extern<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+    fn parse_top_level_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
+}
 
 pub struct Parser {
     pub environment: Environment,
 }
 
 impl Parser {
-    pub fn new() -> Parser {
+    fn log_error(&self, str: String) -> Option<Expr> {
+        eprintln!("log_error: {}", str);
+        return None;
+    }
+}
+
+impl Parse for Parser {
+    fn new() -> Self {
         let mut environment = Environment::new();
         [('<', 10), ('+', 20), ('-', 30), ('*', 40)]
             .iter()
@@ -21,7 +49,7 @@ impl Parser {
     }
 
     // Primary expression parsing
-    pub fn parse_number_expr<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Expr {
+    fn parse_number_expr<L: Lex>(&mut self, lexer: &mut L) -> Expr {
         let value = match lexer.current_token() {
             Some(Token::Number(v)) => *v,
             _ => unreachable!("lexer should have loaded a Number prior to calling this"),
@@ -33,7 +61,7 @@ impl Parser {
         return result;
     }
 
-    pub fn parse_paren_expr<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_paren_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         // Eat '('
         lexer.get_next_token();
         let result = self.parse_expression(lexer)?;
@@ -50,10 +78,10 @@ impl Parser {
         return result.into();
     }
 
-    pub fn parse_identifier_prefixed_expr<T: BufRead>(
+    fn parse_identifier_prefixed_expr<L: Lex>(
         &mut self,
         identifier: String,
-        lexer: &mut Lexer<T>,
+        lexer: &mut L,
     ) -> Option<Expr> {
         // Eat the identifier
         lexer.get_next_token();
@@ -97,7 +125,7 @@ impl Parser {
         return Expr { kind }.into();
     }
 
-    pub fn parse_primary_expr<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         match lexer.current_token() {
             Some(Token::Identifier(ident)) => {
                 self.parse_identifier_prefixed_expr(ident.clone(), lexer)
@@ -109,16 +137,16 @@ impl Parser {
     }
 
     // Operator parsing and precedence stuff
-    pub fn parse_expression<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let primary = self.parse_primary_expr(lexer)?;
         self.parse_binary_op_rhs(0, primary, lexer)
     }
 
-    pub fn parse_binary_op_rhs<T: BufRead>(
+    fn parse_binary_op_rhs<L: Lex>(
         &mut self,
         lowest_edible_op_precedence: i32,
         mut lhs: Expr,
-        lexer: &mut Lexer<T>,
+        lexer: &mut L,
     ) -> Option<Expr> {
         loop {
             // Try looking up precedence and default to -1 (which is worst than
@@ -159,7 +187,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_function_prototype<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_function_prototype<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let func_name: Option<String> = match lexer.current_token() {
             Some(Token::Identifier(i)) => Some(i.clone()),
             _ => None,
@@ -232,7 +260,7 @@ impl Parser {
         .into()
     }
 
-    pub fn parse_function_definition<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_function_definition<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         // Eat 'def'
         lexer.get_next_token();
         let prototype = self.parse_function_prototype(lexer)?;
@@ -247,13 +275,13 @@ impl Parser {
         .into()
     }
 
-    pub fn parse_extern<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_extern<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         lexer.get_next_token();
         self.parse_function_prototype(lexer)
     }
 
     // Handle top level expressions by defining zero argument functions containing the expr
-    pub fn parse_top_level_expression<T: BufRead>(&mut self, lexer: &mut Lexer<T>) -> Option<Expr> {
+    fn parse_top_level_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let expression = self.parse_expression(lexer)?;
         let prototype = ExprKind::Prototype {
             name: "".to_string(),
@@ -267,11 +295,6 @@ impl Parser {
             },
         }
         .into()
-    }
-
-    fn log_error(&self, str: String) -> Option<Expr> {
-        eprintln!("log_error: {}", str);
-        return None;
     }
 }
 

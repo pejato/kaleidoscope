@@ -1,5 +1,5 @@
 use {
-    parser::Parser,
+    parser::{Parse, Parser},
     std::io::{stdin, stdout, BufRead, Write},
     tokenization::{Lex, Lexer, Token},
 };
