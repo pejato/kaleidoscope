@@ -405,3 +405,19 @@ fn test_parse_function_def() {
 
     assert_eq!(result, expected_result);
 }
+
+#[test]
+fn test_parse_extern_legal_basic() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("extern sin(x)");
+
+    let result = parser.parse_extern(&mut lexer);
+    let expected_result = Expr {
+        kind: Prototype {
+            name: "sin".to_owned(),
+            args: vec!["x".into()],
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}
