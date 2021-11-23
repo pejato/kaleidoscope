@@ -357,3 +357,48 @@ fn test_parse_function_proto_illegal_no_closing_brace() {
 
     assert_eq!(result, expected_result);
 }
+
+#[test]
+fn test_parse_function_def() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("def fun(x, y, z)\n  x + y+z");
+
+    let result = parser.parse_function_definition(&mut lexer);
+    let expected_result = Expr {
+        kind: Function {
+            prototype: Expr {
+                kind: Prototype {
+                    name: "fun".into(),
+                    args: vec!["x".into(), "y".into(), "z".into()],
+                },
+            }
+            .into(),
+            body: Expr {
+                kind: Binary {
+                    operator: '+',
+                    lhs: Expr {
+                        kind: Binary {
+                            operator: '+',
+                            lhs: Expr {
+                                kind: Variable { name: "x".into() },
+                            }
+                            .into(),
+                            rhs: Expr {
+                                kind: Variable { name: "y".into() },
+                            }
+                            .into(),
+                        },
+                    }
+                    .into(),
+                    rhs: Expr {
+                        kind: Variable { name: "z".into() },
+                    }
+                    .into(),
+                },
+            }
+            .into(),
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}

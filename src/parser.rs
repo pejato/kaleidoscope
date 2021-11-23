@@ -210,8 +210,6 @@ impl Parser {
             }
         }
 
-        eprintln!("{:#?}", arg_names);
-
         match lexer.current_token() {
             Some(Token::Misc(')')) => (),
             _ => {
