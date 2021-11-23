@@ -163,6 +163,7 @@ impl Parser {
             _ => None,
         };
 
+        // May want to consume the token here?
         if func_name.is_none() {
             return self.log_error(format!(
                 "Expected function name in protype,\n  got {:#?}",

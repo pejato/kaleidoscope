@@ -278,7 +278,7 @@ fn test_parse_multiple_add_ops() {
 }
 
 #[test]
-fn test_parse_function_proto() {
+fn test_parse_function_proto_legal() {
     let (mut parser, mut lexer) = setup_parser_lexer!("fn(three, four, five)");
 
     let result = parser.parse_function_prototype(&mut lexer);
@@ -293,6 +293,35 @@ fn test_parse_function_proto() {
         },
     }
     .into();
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_function_proto_illegal_no_fn_name() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("(three, four, five)");
+
+    let result = parser.parse_function_prototype(&mut lexer);
+    let expected_result = None;
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_function_proto_illegal_no_opening_brace() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("fUNKthree, four, five)");
+
+    let result = parser.parse_function_prototype(&mut lexer);
+    let expected_result = None;
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_function_proto_illegal_no_closing_brace() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("FuN(three, four, five");
+
+    let result = parser.parse_function_prototype(&mut lexer);
+    let expected_result = None;
 
     assert_eq!(result, expected_result);
 }
