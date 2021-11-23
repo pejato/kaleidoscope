@@ -1,8 +1,11 @@
 use std::str::FromStr;
 
 use super::*;
-use crate::parser::ExprKind::*;
-use crate::test_utilities::test::approx_equal;
+use crate::{
+    parser::ExprKind::*,
+    test_utilities::test::approx_equal,
+    tokenization::{Lex, Lexer},
+};
 use pretty_assertions::assert_eq;
 
 #[macro_export]

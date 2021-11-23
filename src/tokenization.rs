@@ -14,6 +14,14 @@ pub enum Token {
     Misc(char),
 }
 
+pub trait Lex {
+    type Reader: BufRead;
+
+    fn new(reader: Self::Reader) -> Self;
+    fn get_next_token(&mut self);
+    fn current_token(&self) -> &Option<Token>;
+}
+
 pub struct Lexer<T>
 where
     T: BufRead,
@@ -26,11 +34,13 @@ where
 
 // Public Interface
 
-impl<T> Lexer<T>
+impl<T> Lex for Lexer<T>
 where
     T: BufRead,
 {
-    pub fn new(reader: T) -> Self {
+    type Reader = T;
+
+    fn new(reader: T) -> Self {
         Lexer {
             reader: reader,
             buffer: None,
@@ -39,11 +49,11 @@ where
         }
     }
 
-    pub fn get_next_token(&mut self) {
+    fn get_next_token(&mut self) {
         self.buffer = self.get_token().into();
     }
 
-    pub fn current_token(&self) -> &Option<Token> {
+    fn current_token(&self) -> &Option<Token> {
         &self.buffer
     }
 }
@@ -79,6 +89,34 @@ where
 
     // Methods
 
+    fn get_token(&mut self) -> Option<Token> {
+        let ch: char;
+
+        // Check if there's a non-whitespace char already in the buffer
+        if self.char_buffer.map_or(true, |c| c.is_ascii_whitespace()) {
+            match self.try_get_char(true) {
+                Some(c) => ch = c,
+                None => return Token::EOF.into(),
+            }
+        } else {
+            ch = self.char_buffer.unwrap();
+        }
+
+        // Def, Extern, or Identifier
+        if ch.is_ascii_alphabetic() {
+            return self.tok_def_extern_or_ident().into();
+            // Number
+        } else if ch.is_ascii_digit() || ch == '.' {
+            return self.tok_number();
+            // Comment
+        } else if ch == '#' {
+            return self.tok_comment().into();
+        }
+
+        self.try_get_char(false);
+        Token::Misc(ch).into()
+    }
+
     fn try_get_char(&mut self, does_eat_whitespace: bool) -> Option<char> {
         self.char_buffer = None;
 
@@ -109,34 +147,6 @@ where
                 None => return None,
             }
         }
-    }
-
-    fn get_token(&mut self) -> Option<Token> {
-        let ch: char;
-
-        // Check if there's a non-whitespace char already in the buffer
-        if self.char_buffer.map_or(true, |c| c.is_ascii_whitespace()) {
-            match self.try_get_char(true) {
-                Some(c) => ch = c,
-                None => return Token::EOF.into(),
-            }
-        } else {
-            ch = self.char_buffer.unwrap();
-        }
-
-        // Def, Extern, or Identifier
-        if ch.is_ascii_alphabetic() {
-            return self.tok_def_extern_or_ident().into();
-            // Number
-        } else if ch.is_ascii_digit() || ch == '.' {
-            return self.tok_number();
-            // Comment
-        } else if ch == '#' {
-            return self.tok_comment().into();
-        }
-
-        self.try_get_char(false);
-        Token::Misc(ch).into()
     }
 
     fn tok_number(&mut self) -> Option<Token> {

@@ -1,6 +1,8 @@
-use crate::parser::Parser;
-use std::io::{stdin, stdout, BufRead, Write};
-use tokenization::{Lexer, Token};
+use {
+    parser::Parser,
+    std::io::{stdin, stdout, BufRead, Write},
+    tokenization::{Lex, Lexer, Token},
+};
 
 pub mod ast;
 pub mod environment;

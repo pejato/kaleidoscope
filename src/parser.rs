@@ -1,8 +1,10 @@
 use std::io::BufRead;
 
-use crate::ast::{Expr, ExprKind};
-use crate::environment::Environment;
-use crate::tokenization::{Lexer, Token};
+use crate::{
+    ast::{Expr, ExprKind},
+    environment::Environment,
+    tokenization::{Lex, Lexer, Token},
+};
 
 pub struct Parser {
     pub environment: Environment,
