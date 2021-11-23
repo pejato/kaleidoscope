@@ -298,6 +298,38 @@ fn test_parse_function_proto_legal() {
 }
 
 #[test]
+fn test_parse_function_proto_legal_no_args() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("fn()");
+
+    let result = parser.parse_function_prototype(&mut lexer);
+    let expected_result = Expr {
+        kind: Prototype {
+            name: "fn".to_owned(),
+            args: vec![],
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_function_proto_legal_trailing_comma_after_args() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("fn(seven,)");
+
+    let result = parser.parse_function_prototype(&mut lexer);
+    let expected_result = Expr {
+        kind: Prototype {
+            name: "fn".to_owned(),
+            args: vec![String::from_str("seven").unwrap()],
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
 fn test_parse_function_proto_illegal_no_fn_name() {
     let (mut parser, mut lexer) = setup_parser_lexer!("(three, four, five)");
 
