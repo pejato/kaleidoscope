@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, ErrorKind},
+    io::{ErrorKind, Read},
     string::String,
 };
 
@@ -15,7 +15,7 @@ pub enum Token {
 }
 
 pub trait Lex {
-    type Reader: BufRead;
+    type Reader: Read;
 
     fn new(reader: Self::Reader) -> Self;
     fn get_next_token(&mut self);
@@ -24,7 +24,7 @@ pub trait Lex {
 
 pub struct Lexer<T>
 where
-    T: BufRead,
+    T: Read,
 {
     reader: T,
     buffer: Option<Token>,
@@ -36,7 +36,7 @@ where
 
 impl<T> Lex for Lexer<T>
 where
-    T: BufRead,
+    T: Read,
 {
     type Reader = T;
 
@@ -76,7 +76,7 @@ macro_rules! read_exact {
 
 impl<T> Lexer<T>
 where
-    T: BufRead,
+    T: Read,
 {
     fn is_newline(c: Option<char>) -> bool {
         if c.is_none() {

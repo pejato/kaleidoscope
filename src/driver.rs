@@ -3,24 +3,24 @@ use crate::{
     parser::{Parse, Parser},
 };
 
-use std::io::{stdin, stdout, BufRead, Write};
+use std::io::{stdin, stdout, Read, Write};
 
 pub trait Drive {
     fn new() -> Self;
     fn run(&self);
-    fn handle_function_definition<T: BufRead>(
+    fn handle_function_definition<T: Read>(
         &self,
         parser: &mut Parser,
         lexer: &mut Lexer<T>,
         output: &mut dyn Write,
     );
-    fn handle_extern<T: BufRead>(
+    fn handle_extern<T: Read>(
         &self,
         parser: &mut Parser,
         lexer: &mut Lexer<T>,
         output: &mut dyn Write,
     );
-    fn handle_top_level_expression<T: BufRead>(
+    fn handle_top_level_expression<T: Read>(
         &self,
         parser: &mut Parser,
         lexer: &mut Lexer<T>,
@@ -57,7 +57,7 @@ impl Drive for Driver {
             }
         }
     }
-    fn handle_function_definition<T: BufRead>(
+    fn handle_function_definition<T: Read>(
         &self,
         parser: &mut Parser,
         lexer: &mut Lexer<T>,
@@ -70,7 +70,7 @@ impl Drive for Driver {
         }
     }
 
-    fn handle_extern<T: BufRead>(
+    fn handle_extern<T: Read>(
         &self,
         parser: &mut Parser,
         lexer: &mut Lexer<T>,
@@ -83,7 +83,7 @@ impl Drive for Driver {
         }
     }
 
-    fn handle_top_level_expression<T: BufRead>(
+    fn handle_top_level_expression<T: Read>(
         &self,
         parser: &mut Parser,
         lexer: &mut Lexer<T>,
