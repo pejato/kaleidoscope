@@ -421,3 +421,38 @@ fn test_parse_extern_legal_basic() {
 
     assert_eq!(result, expected_result);
 }
+
+#[test]
+fn test_parse_top_level_expr_legal_basic() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("5 + func(30.0)");
+
+    let result = parser.parse_top_level_expression(&mut lexer);
+    let expected_result = Expr {
+        kind: Function {
+            prototype: Expr {
+                kind: Prototype {
+                    name: "".to_owned(),
+                    args: vec![],
+                },
+            }
+            .into(),
+            body: Expr {
+                kind: Binary {
+                    operator: '+',
+                    lhs: Expr { kind: Number(5.0) }.into(),
+                    rhs: Expr {
+                        kind: Call {
+                            callee: "func".to_owned(),
+                            args: { vec![Expr { kind: Number(30.0) }.into()] },
+                        },
+                    }
+                    .into(),
+                },
+            }
+            .into(),
+        },
+    }
+    .into();
+
+    assert_eq!(result, expected_result);
+}
