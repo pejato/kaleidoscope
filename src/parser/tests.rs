@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use super::*;
 use crate::{
+    lexer::{Lex, Lexer},
     parser::ExprKind::*,
     test_utilities::test::approx_equal,
-    tokenization::{Lex, Lexer},
 };
 use pretty_assertions::assert_eq;
 

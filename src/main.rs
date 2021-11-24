@@ -1,14 +1,14 @@
 use {
+    lexer::{Lex, Lexer, Token},
     parser::{Parse, Parser},
     std::io::{stdin, stdout, BufRead, Write},
-    tokenization::{Lex, Lexer, Token},
 };
 
 pub mod ast;
 pub mod environment;
+pub mod lexer;
 pub mod parser;
 mod test_utilities;
-pub mod tokenization;
 
 // TODO: Refactor these into a Driver struct or something
 fn handle_function_definition<T: BufRead>(

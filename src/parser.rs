@@ -1,7 +1,7 @@
 use crate::{
     ast::{Expr, ExprKind},
     environment::Environment,
-    tokenization::{Lex, Token},
+    lexer::{Lex, Token},
 };
 
 pub trait Parse {
