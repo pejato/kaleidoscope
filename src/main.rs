@@ -8,6 +8,6 @@ pub mod parser;
 mod test_utilities;
 
 fn main() {
-    let driver = Driver::new();
+    let mut driver = Driver::new();
     driver.run();
 }
