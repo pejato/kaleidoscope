@@ -7,7 +7,9 @@ pub mod lexer;
 pub mod parser;
 mod test_utilities;
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let mut driver = Driver::new();
-    driver.run();
+    driver.run()?;
+
+    Ok(())
 }
