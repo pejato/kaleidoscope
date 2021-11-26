@@ -52,6 +52,16 @@ impl Drive for Driver {
                 Some(Token::Extern) => self.handle_extern(&mut lexer, &mut stdout)?,
                 _ => self.handle_top_level_expression(&mut lexer, &mut stdout)?,
             }
+
+            match lexer.current_token() {
+                Some(Token::Misc(c)) => {
+                    if *c != ';' {
+                        writeln!(&mut stdout, "Expected ';', but got {}", *c)?;
+                    }
+                }
+                Some(tok) => writeln!(&mut stdout, "Expected ';', but got {:#?}", tok)?,
+                None => writeln!(&mut stdout, "Expected ';', but got nothing...")?,
+            }
         }
     }
     fn handle_function_definition<T: Read>(
