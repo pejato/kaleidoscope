@@ -1,6 +1,7 @@
 use driver::{Drive, Driver};
 
 pub mod ast;
+pub mod codegen;
 pub mod driver;
 pub mod environment;
 pub mod lexer;
