@@ -1,4 +1,5 @@
 use driver::{Drive, Driver};
+use std::io::{stdin, stdout};
 
 pub mod ast;
 pub mod codegen;
@@ -10,7 +11,7 @@ pub mod parser;
 mod test_utilities;
 
 fn main() -> Result<(), std::io::Error> {
-    let mut driver = Driver::new();
+    let mut driver = Driver::new(Box::new(stdin()), Box::new(stdout()));
     driver.run()?;
 
     Ok(())
