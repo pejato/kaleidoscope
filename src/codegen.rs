@@ -7,24 +7,26 @@ use crate::ast::{Expr, ExprKind};
 
 pub trait CodeGen {
     type Context;
-    fn codegen(&self, context: &Self::Context) -> LLVMValueRef;
+    fn codegen(&self, context: &Self::Context) -> Option<LLVMValueRef>;
 }
 
 pub struct KaleidoscopeContext {
     named_values: HashMap<String, LLVMValueRef>,
 }
 
+// TODO: How should we handle LLVMValueRef potentially containing nullptr?
+
 impl CodeGen for Expr {
     type Context = KaleidoscopeContext;
 
-    fn codegen(&self, context: &Self::Context) -> LLVMValueRef {
+    fn codegen(&self, context: &Self::Context) -> Option<LLVMValueRef> {
         match self.kind {
-            ExprKind::Number(num) => self.codegen_number(num),
+            ExprKind::Number(num) => self.codegen_number(num).into(),
             ExprKind::Variable { ref name } => self.codegen_variable(name, &context),
-            ExprKind::Binary { .. } => self.codegen_binary(),
-            ExprKind::Call { .. } => self.codegen_call(),
-            ExprKind::Prototype { .. } => self.codegen_prototype(),
-            ExprKind::Function { .. } => self.codegen_function(),
+            ExprKind::Binary { .. } => self.codegen_binary().into(),
+            ExprKind::Call { .. } => self.codegen_call().into(),
+            ExprKind::Prototype { .. } => self.codegen_prototype().into(),
+            ExprKind::Function { .. } => self.codegen_function().into(),
         }
     }
 }
@@ -38,8 +40,8 @@ impl Expr {
         &self,
         name: &String,
         context: &<Self as CodeGen>::Context,
-    ) -> LLVMValueRef {
-        todo!()
+    ) -> Option<LLVMValueRef> {
+        context.named_values.get(name).map(|v| *v)
     }
 
     fn codegen_binary(&self) -> LLVMValueRef {
