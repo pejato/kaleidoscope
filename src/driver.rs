@@ -3,7 +3,11 @@ use crate::{
     parser::{Parse, Parser},
 };
 
-use std::io::{stdin, stdout, Read, Write};
+use llvm_sys::prelude::*;
+use std::{
+    collections::HashMap,
+    io::{stdin, stdout, Read, Write},
+};
 
 pub trait Drive {
     fn new() -> Self;
@@ -27,12 +31,14 @@ pub trait Drive {
 
 pub struct Driver {
     parser: Parser,
+    named_values: HashMap<String, LLVMValueRef>,
 }
 
 impl Drive for Driver {
     fn new() -> Self {
         Driver {
             parser: Parser::new(),
+            named_values: HashMap::new(),
         }
     }
     fn run(&mut self) -> Result<(), std::io::Error> {
