@@ -1,17 +1,12 @@
-use std::collections::HashMap;
-
 use llvm_sys::core::{LLVMConstReal, LLVMDoubleType};
 use llvm_sys::prelude::*;
 
 use crate::ast::{Expr, ExprKind};
+use crate::kaleidoscope_context::KaleidoscopeContext;
 
 pub trait CodeGen {
     type Context;
     fn codegen(&self, context: &Self::Context) -> Option<LLVMValueRef>;
-}
-
-pub struct KaleidoscopeContext {
-    named_values: HashMap<String, LLVMValueRef>,
 }
 
 // TODO: How should we handle LLVMValueRef potentially containing nullptr?

@@ -1,13 +1,10 @@
 use crate::{
+    kaleidoscope_context::KaleidoscopeContext,
     lexer::{Lex, Lexer, Token},
     parser::{Parse, Parser},
 };
 
-use llvm_sys::prelude::*;
-use std::{
-    collections::HashMap,
-    io::{stdin, stdout, Read, Write},
-};
+use std::io::{stdin, stdout, Read, Write};
 
 pub trait Drive {
     fn new() -> Self;
@@ -31,14 +28,14 @@ pub trait Drive {
 
 pub struct Driver {
     parser: Parser,
-    named_values: HashMap<String, LLVMValueRef>,
+    context: KaleidoscopeContext,
 }
 
 impl Drive for Driver {
     fn new() -> Self {
         Driver {
             parser: Parser::new(),
-            named_values: HashMap::new(),
+            context: KaleidoscopeContext::new(),
         }
     }
     fn run(&mut self) -> Result<(), std::io::Error> {
