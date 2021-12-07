@@ -1,5 +1,8 @@
-use llvm_sys::core::{LLVMConstReal, LLVMDoubleType};
-use llvm_sys::prelude::*;
+use llvm_sys::core::{
+    LLVMBuildFAdd, LLVMBuildFCmp, LLVMBuildFMul, LLVMBuildFSub, LLVMBuildUIToFP, LLVMConstReal,
+    LLVMDoubleType,
+};
+use llvm_sys::{prelude::*, LLVMRealPredicate};
 
 use crate::ast::{Expr, ExprKind};
 use crate::kaleidoscope_context::KaleidoscopeContext;
@@ -18,12 +21,19 @@ impl CodeGen for Expr {
         match self.kind {
             ExprKind::Number(num) => self.codegen_number(num).into(),
             ExprKind::Variable { ref name } => self.codegen_variable(name, &context),
-            ExprKind::Binary { .. } => self.codegen_binary().into(),
+            ExprKind::Binary { operator, lhs, rhs } => {
+                self.codegen_binary(operator, lhs, rhs, &context).into()
+            }
             ExprKind::Call { .. } => self.codegen_call().into(),
             ExprKind::Prototype { .. } => self.codegen_prototype().into(),
             ExprKind::Function { .. } => self.codegen_function().into(),
         }
     }
+}
+
+fn log_error(message: &str) -> Option<LLVMValueRef> {
+    eprintln!("{message}");
+    None
 }
 
 impl Expr {
@@ -39,8 +49,48 @@ impl Expr {
         context.named_values.get(name).map(|v| *v)
     }
 
-    fn codegen_binary(&self) -> LLVMValueRef {
-        todo!()
+    fn codegen_binary(
+        &self,
+        op: char,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+        context: &<Self as CodeGen>::Context,
+    ) -> Option<LLVMValueRef> {
+        let lhs_gen = lhs.codegen(&context);
+        let rhs_gen = rhs.codegen(&context);
+
+        if lhs_gen.is_none() || rhs_gen.is_none() {
+            return None;
+        }
+
+        let lhs_gen = lhs_gen.unwrap();
+        let rhs_gen = rhs_gen.unwrap();
+
+        unsafe {
+            match op {
+                '+' => LLVMBuildFAdd(context.builder, lhs_gen, rhs_gen, "addtmp".as_ptr()).into(),
+                '-' => LLVMBuildFSub(context.builder, lhs_gen, rhs_gen, "subtmp".as_ptr()).into(),
+                '*' => LLVMBuildFMul(context.builder, lhs_gen, rhs_gen, "multmp".as_ptr()).into(),
+                '<' => {
+                    // L = Builder.CreateFCmpULT(L, R, "cmptmp");
+                    let lhs_gen = LLVMBuildFCmp(
+                        context.builder,
+                        LLVMRealPredicate::LLVMRealULT,
+                        lhs_gen,
+                        rhs_gen,
+                        "cmptmp".as_ptr(),
+                    );
+                    LLVMBuildUIToFP(
+                        context.builder,
+                        lhs_gen,
+                        LLVMDoubleType(),
+                        "booltmp".as_ptr(),
+                    )
+                    .into()
+                }
+                _ => log_error(&format!("Invalid binary operator {:#?}", op)),
+            }
+        }
     }
 
     fn codegen_call(&self) -> LLVMValueRef {
