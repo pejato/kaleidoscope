@@ -9,7 +9,7 @@ pub struct KaleidoscopeContext {
     pub module: LLVMModuleRef,
     pub builder: LLVMBuilderRef,
 
-    _module_name: CString,
+    _c_strings: Vec<CString>,
 }
 
 impl KaleidoscopeContext {
@@ -22,9 +22,16 @@ impl KaleidoscopeContext {
                 module: LLVMModuleCreateWithName(_module_name_raw_ptr),
                 // Note: This implicitly uses the global context
                 builder: LLVMCreateBuilder(),
-                _module_name,
+                _c_strings: vec![_module_name]
             }
         }
+    }
+
+    pub fn make_cchar_ptr(&mut self, s: &str) -> *const i8 {
+        let c_str = CString::new(s).expect("CString::new failed!");
+        let ptr = c_str.as_ptr();
+        self._c_strings.push(c_str);
+        return ptr
     }
 }
 

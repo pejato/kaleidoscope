@@ -9,7 +9,7 @@ use crate::kaleidoscope_context::KaleidoscopeContext;
 
 pub trait CodeGen {
     type Context;
-    fn codegen(&self, context: &Self::Context) -> Option<LLVMValueRef>;
+    fn codegen(&self, context: &mut Self::Context) -> Option<LLVMValueRef>;
 }
 
 // TODO: How should we handle LLVMValueRef potentially containing nullptr?
@@ -17,12 +17,12 @@ pub trait CodeGen {
 impl CodeGen for Expr {
     type Context = KaleidoscopeContext;
 
-    fn codegen(&self, context: &Self::Context) -> Option<LLVMValueRef> {
-        match self.kind {
-            ExprKind::Number(num) => self.codegen_number(num).into(),
+    fn codegen(&self, context: &mut Self::Context) -> Option<LLVMValueRef> {
+        match &self.kind {
+            ExprKind::Number(num) => self.codegen_number(*num).into(),
             ExprKind::Variable { ref name } => self.codegen_variable(name, &context),
             ExprKind::Binary { operator, lhs, rhs } => {
-                self.codegen_binary(operator, lhs, rhs, &context).into()
+                self.codegen_binary(*operator, lhs, rhs, context).into()
             }
             ExprKind::Call { .. } => self.codegen_call().into(),
             ExprKind::Prototype { .. } => self.codegen_prototype().into(),
@@ -32,7 +32,7 @@ impl CodeGen for Expr {
 }
 
 fn log_error(message: &str) -> Option<LLVMValueRef> {
-    eprintln!("{message}");
+    eprintln!("{}", message);
     None
 }
 
@@ -52,12 +52,12 @@ impl Expr {
     fn codegen_binary(
         &self,
         op: char,
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
-        context: &<Self as CodeGen>::Context,
+        lhs: &Box<Expr>,
+        rhs: &Box<Expr>,
+        context: &mut<Self as CodeGen>::Context,
     ) -> Option<LLVMValueRef> {
-        let lhs_gen = lhs.codegen(&context);
-        let rhs_gen = rhs.codegen(&context);
+        let lhs_gen = lhs.codegen(context);
+        let rhs_gen = rhs.codegen(context);
 
         if lhs_gen.is_none() || rhs_gen.is_none() {
             return None;
@@ -68,9 +68,9 @@ impl Expr {
 
         unsafe {
             match op {
-                '+' => LLVMBuildFAdd(context.builder, lhs_gen, rhs_gen, "addtmp".as_ptr()).into(),
-                '-' => LLVMBuildFSub(context.builder, lhs_gen, rhs_gen, "subtmp".as_ptr()).into(),
-                '*' => LLVMBuildFMul(context.builder, lhs_gen, rhs_gen, "multmp".as_ptr()).into(),
+                '+' => LLVMBuildFAdd(context.builder, lhs_gen, rhs_gen, context.make_cchar_ptr("addtmp")).into(),
+                '-' => LLVMBuildFSub(context.builder, lhs_gen, rhs_gen, context.make_cchar_ptr("subtmp")).into(),
+                '*' => LLVMBuildFMul(context.builder, lhs_gen, rhs_gen, context.make_cchar_ptr("multmp")).into(),
                 '<' => {
                     // L = Builder.CreateFCmpULT(L, R, "cmptmp");
                     let lhs_gen = LLVMBuildFCmp(
@@ -78,13 +78,13 @@ impl Expr {
                         LLVMRealPredicate::LLVMRealULT,
                         lhs_gen,
                         rhs_gen,
-                        "cmptmp".as_ptr(),
+                        context.make_cchar_ptr("cmptmp"),
                     );
                     LLVMBuildUIToFP(
                         context.builder,
                         lhs_gen,
                         LLVMDoubleType(),
-                        "booltmp".as_ptr(),
+                        context.make_cchar_ptr("booltmp"),
                     )
                     .into()
                 }
