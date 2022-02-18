@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 llvm-sys = "130"
+scopeguard = "1.1.*"
 
 [dev-dependencies]
 pretty_assertions = { version = "1.0.0" }

@@ -1,6 +1,11 @@
+use scopeguard::defer;
+use std::ffi::CString;
+use std::ptr::null_mut;
+
 use llvm_sys::core::{
-    LLVMBuildFAdd, LLVMBuildFCmp, LLVMBuildFMul, LLVMBuildFSub, LLVMBuildUIToFP, LLVMConstReal,
-    LLVMDoubleType,
+    LLVMArrayType, LLVMBuildCall, LLVMBuildFAdd, LLVMBuildFCmp, LLVMBuildFMul, LLVMBuildFSub,
+    LLVMBuildUIToFP, LLVMConstReal, LLVMCreateBuilder, LLVMDisposeBuilder, LLVMDoubleType,
+    LLVMGetNamedFunction, LLVMGetNumOperands,
 };
 use llvm_sys::{prelude::*, LLVMRealPredicate};
 
@@ -24,7 +29,7 @@ impl CodeGen for Expr {
             ExprKind::Binary { operator, lhs, rhs } => {
                 self.codegen_binary(*operator, lhs, rhs, context).into()
             }
-            ExprKind::Call { .. } => self.codegen_call().into(),
+            ExprKind::Call { callee, args } => self.codegen_call(callee, args, &context).into(),
             ExprKind::Prototype { .. } => self.codegen_prototype().into(),
             ExprKind::Function { .. } => self.codegen_function().into(),
         }
@@ -111,8 +116,39 @@ impl Expr {
         }
     }
 
-    fn codegen_call(&self) -> LLVMValueRef {
-        todo!()
+    fn codegen_call(
+        &self,
+        callee: &String,
+        args: &Vec<Expr>,
+        context: &<Self as CodeGen>::Context,
+    ) -> Option<LLVMValueRef> {
+        unsafe {
+            let callee_as_cstr = CString::new(callee.as_bytes()).expect("CString new failed");
+            let callee_fn = LLVMGetNamedFunction(context.module, callee_as_cstr.as_ptr());
+            if callee_fn.is_null() {
+                return log_error("Unknown function referenced");
+            }
+
+            let num_operands = LLVMGetNumOperands(callee_fn);
+            if num_operands != args.len().try_into().ok()? {
+                return log_error("Incorrect # arguments passed");
+            }
+
+            let builder = LLVMCreateBuilder();
+
+            // let llvm_args: *mut LLVMValueRef = llmv_args.dat
+
+            defer! { LLVMDisposeBuilder(builder); }
+            // TODO: I think we should figure out whether we can just ask LLVM for this pointer..
+            return LLVMBuildCall(
+                builder,
+                callee_fn,
+                args.as_mut_ptr(),
+                num_operands.try_into().ok()?,
+                callee_as_cstr.as_ptr(),
+            )
+            .into();
+        }
     }
 
     fn codegen_prototype(&self) -> LLVMValueRef {
