@@ -54,7 +54,7 @@ impl Expr {
         op: char,
         lhs: &Box<Expr>,
         rhs: &Box<Expr>,
-        context: &mut<Self as CodeGen>::Context,
+        context: &mut <Self as CodeGen>::Context,
     ) -> Option<LLVMValueRef> {
         let lhs_gen = lhs.codegen(context);
         let rhs_gen = rhs.codegen(context);
@@ -68,9 +68,27 @@ impl Expr {
 
         unsafe {
             match op {
-                '+' => LLVMBuildFAdd(context.builder, lhs_gen, rhs_gen, context.make_cchar_ptr("addtmp")).into(),
-                '-' => LLVMBuildFSub(context.builder, lhs_gen, rhs_gen, context.make_cchar_ptr("subtmp")).into(),
-                '*' => LLVMBuildFMul(context.builder, lhs_gen, rhs_gen, context.make_cchar_ptr("multmp")).into(),
+                '+' => LLVMBuildFAdd(
+                    context.builder,
+                    lhs_gen,
+                    rhs_gen,
+                    context.get_cchar_ptr(&"addtmp".into()),
+                )
+                .into(),
+                '-' => LLVMBuildFSub(
+                    context.builder,
+                    lhs_gen,
+                    rhs_gen,
+                    context.get_cchar_ptr(&"subtmp".into()),
+                )
+                .into(),
+                '*' => LLVMBuildFMul(
+                    context.builder,
+                    lhs_gen,
+                    rhs_gen,
+                    context.get_cchar_ptr(&"multmp".into()),
+                )
+                .into(),
                 '<' => {
                     // L = Builder.CreateFCmpULT(L, R, "cmptmp");
                     let lhs_gen = LLVMBuildFCmp(
@@ -78,13 +96,13 @@ impl Expr {
                         LLVMRealPredicate::LLVMRealULT,
                         lhs_gen,
                         rhs_gen,
-                        context.make_cchar_ptr("cmptmp"),
+                        context.get_cchar_ptr(&"cmptmp".into()),
                     );
                     LLVMBuildUIToFP(
                         context.builder,
                         lhs_gen,
                         LLVMDoubleType(),
-                        context.make_cchar_ptr("booltmp"),
+                        context.get_cchar_ptr(&"booltmp".into()),
                     )
                     .into()
                 }

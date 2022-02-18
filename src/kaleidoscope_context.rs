@@ -9,7 +9,7 @@ pub struct KaleidoscopeContext {
     pub module: LLVMModuleRef,
     pub builder: LLVMBuilderRef,
 
-    _c_strings: Vec<CString>,
+    _c_string_map: HashMap<String, CString>,
 }
 
 impl KaleidoscopeContext {
@@ -17,21 +17,28 @@ impl KaleidoscopeContext {
         unsafe {
             let _module_name = CString::new("my module").expect("CString::new failed");
             let _module_name_raw_ptr = _module_name.as_ptr();
+
+            let mut map = HashMap::new();
+            for instr in ["addtmp", "subtmp", "multmp", "cmptmp", "booltmp"] {
+                Self::insert_as_cstr(&mut map, instr);
+            }
             Self {
                 named_values: HashMap::new(),
                 module: LLVMModuleCreateWithName(_module_name_raw_ptr),
                 // Note: This implicitly uses the global context
                 builder: LLVMCreateBuilder(),
-                _c_strings: vec![_module_name]
+                _c_string_map: map,
             }
         }
     }
 
-    pub fn make_cchar_ptr(&mut self, s: &str) -> *const i8 {
-        let c_str = CString::new(s).expect("CString::new failed!");
-        let ptr = c_str.as_ptr();
-        self._c_strings.push(c_str);
-        return ptr
+    fn insert_as_cstr(map: &mut HashMap<String, CString>, s: &str) {
+        map.insert(s.to_owned(), CString::new(s).expect("CString::new failed"));
+    }
+
+    pub fn get_cchar_ptr(&self, s: &String) -> *const i8 {
+        let ptr = self._c_string_map[s].as_ptr();
+        return ptr;
     }
 }
 
