@@ -1,34 +1,44 @@
+use std::collections::HashMap;
+
 use crate::ast::{Expr, ExprKind};
+use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::values::FloatValue;
-pub trait CodeGen<'a, 'ctx: 'a> {
-    fn codegen(&'a self, context: &'ctx mut Context) -> Option<FloatValue>;
+use inkwell::values::{FloatValue, PointerValue};
+
+pub struct CodeGen<'a, 'ctx> {
+    pub builder: &'a Builder<'ctx>,
+    pub context: &'ctx Context,
+    pub named_values: HashMap<String, PointerValue<'ctx>>,
 }
 
 // TODO: How should we handle LLVMValueRef potentially containing nullptr?
 
-impl<'a, 'ctx: 'a> CodeGen<'a, 'ctx> for Expr {
-    fn codegen(&'a self, context: &'ctx mut Context) -> Option<FloatValue<'ctx>> {
-        match &self.kind {
-            ExprKind::Number(num) => self.codegen_number(*num, context).into(),
-            ExprKind::Variable { ref name } => self.codegen_variable(name, context),
+impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    fn codegen(&self, expr: &Expr) -> Option<FloatValue<'ctx>> {
+        match &expr.kind {
+            ExprKind::Number(num) => self.codegen_number(*num).into(),
+            ExprKind::Variable { ref name } => self.codegen_variable(name),
             ExprKind::Binary { operator, lhs, rhs } => {
-                self.codegen_binary(*operator, lhs, rhs, context).into()
+                self.codegen_binary(*operator, lhs, rhs).into()
             }
-            ExprKind::Call { callee, args } => self.codegen_call(callee, args, context).into(),
+            ExprKind::Call { callee, args } => self.codegen_call(callee, args).into(),
             ExprKind::Prototype { .. } => self.codegen_prototype().into(),
             ExprKind::Function { .. } => self.codegen_function().into(),
         }
     }
 }
 
-impl<'a, 'ctx> Expr {
-    fn codegen_number(&self, num: f64, context: &'ctx Context) -> FloatValue<'ctx> {
-        context.f64_type().const_float(num)
+impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    fn codegen_number(&self, num: f64) -> FloatValue<'ctx> {
+        self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(&self, name: &String, context: &mut Context) -> Option<FloatValue<'ctx>> {
-        todo!()
+    fn codegen_variable(&self, name: &String) -> Option<FloatValue<'ctx>> {
+        // Note: This wouldn't work if we had non float types..
+        self.named_values
+            .get(name)
+            .map(|val| self.builder.build_load(*val, name))
+            .map(|instr| instr.into_float_value())
     }
 
     fn codegen_binary(
@@ -36,25 +46,19 @@ impl<'a, 'ctx> Expr {
         op: char,
         lhs: &Box<Expr>,
         rhs: &Box<Expr>,
-        context: &mut Context,
-    ) -> Option<FloatValue<'a>> {
-        todo!()
-    }
-
-    fn codegen_call(
-        &self,
-        callee: &String,
-        args: &Vec<Expr>,
-        context: &mut Context,
     ) -> Option<FloatValue<'ctx>> {
         todo!()
     }
 
-    fn codegen_prototype(&self) -> FloatValue<'a> {
+    fn codegen_call(&self, callee: &String, args: &Vec<Expr>) -> Option<FloatValue<'ctx>> {
         todo!()
     }
 
-    fn codegen_function(&self) -> FloatValue<'a> {
+    fn codegen_prototype(&self) -> FloatValue<'ctx> {
+        todo!()
+    }
+
+    fn codegen_function(&self) -> FloatValue<'ctx> {
         todo!()
     }
 }
