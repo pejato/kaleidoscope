@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::values::{FloatValue, PointerValue};
+use inkwell::values::{BasicValue, FloatValue, PointerValue};
+use inkwell::FloatPredicate;
 
 pub struct CodeGen<'a, 'ctx> {
     pub builder: &'a Builder<'ctx>,
@@ -47,7 +48,27 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         lhs: &Box<Expr>,
         rhs: &Box<Expr>,
     ) -> Option<FloatValue<'ctx>> {
-        todo!()
+        let lhs = self.codegen(lhs)?;
+        let rhs = self.codegen(rhs)?;
+        // inkwell::values::FloatMathValue
+        match op {
+            '+' => self.builder.build_float_add(lhs, rhs, "addtmp").into(),
+            '-' => self.builder.build_float_sub(lhs, rhs, "subtmp").into(),
+            '*' => self.builder.build_float_mul(lhs, rhs, "multmp").into(),
+            '<' => {
+                let cmp_as_intval =
+                    self.builder
+                        .build_float_compare(FloatPredicate::ULT, lhs, rhs, "cmptmp");
+
+                self.builder
+                    .build_unsigned_int_to_float(cmp_as_intval, self.context.f64_type(), "booltmp")
+                    .into()
+            }
+            _ => {
+                eprintln!("Unexpected operator {}", op);
+                None
+            }
+        }
     }
 
     fn codegen_call(&self, callee: &String, args: &Vec<Expr>) -> Option<FloatValue<'ctx>> {
