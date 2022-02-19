@@ -1,11 +1,10 @@
-use core::slice::SlicePattern;
 use std::collections::HashMap;
 
 use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{BasicMetadataValueEnum, BasicValue, FloatValue, PointerValue};
+use inkwell::values::{AnyValue, AnyValueEnum, BasicMetadataValueEnum, FloatValue, PointerValue};
 use inkwell::FloatPredicate;
 
 pub struct CodeGen<'a, 'ctx> {
@@ -18,16 +17,29 @@ pub struct CodeGen<'a, 'ctx> {
 // TODO: How should we handle LLVMValueRef potentially containing nullptr?
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
-    fn codegen(&self, expr: &Expr) -> Option<FloatValue<'ctx>> {
+    fn codegen(&self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
         match &expr.kind {
-            ExprKind::Number(num) => self.codegen_number(*num).into(),
-            ExprKind::Variable { ref name } => self.codegen_variable(name),
-            ExprKind::Binary { operator, lhs, rhs } => {
-                self.codegen_binary(*operator, lhs, rhs).into()
-            }
-            ExprKind::Call { callee, args } => self.codegen_call(callee, args).into(),
-            ExprKind::Prototype { .. } => self.codegen_prototype().into(),
-            ExprKind::Function { .. } => self.codegen_function().into(),
+            ExprKind::Number(num) => self.codegen_number(*num).as_any_value_enum().into(),
+
+            ExprKind::Variable { ref name } => self
+                .codegen_variable(name)
+                .map(|val| val.as_any_value_enum().into()),
+
+            ExprKind::Binary { operator, lhs, rhs } => self
+                .codegen_binary(*operator, lhs, rhs)
+                .map(|val| val.as_any_value_enum().into()),
+
+            ExprKind::Call { callee, args } => self
+                .codegen_call(callee, args)
+                .map(|val| val.as_any_value_enum().into()),
+
+            ExprKind::Prototype { .. } => self
+                .codegen_prototype()
+                .map(|val| val.as_any_value_enum().into()),
+
+            ExprKind::Function { .. } => self
+                .codegen_function()
+                .map(|val| val.as_any_value_enum().into()),
         }
     }
 }
@@ -51,8 +63,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         lhs: &Box<Expr>,
         rhs: &Box<Expr>,
     ) -> Option<FloatValue<'ctx>> {
-        let lhs = self.codegen(lhs)?;
-        let rhs = self.codegen(rhs)?;
+        let lhs: FloatValue = self.codegen(lhs)?.try_into().ok()?;
+        let rhs: FloatValue = self.codegen(rhs)?.try_into().ok()?;
+
         // inkwell::values::FloatMathValue
         match op {
             '+' => self.builder.build_float_add(lhs, rhs, "addtmp").into(),
@@ -82,10 +95,10 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             return None;
         }
 
-        let mut compiled_args = Vec::with_capacity(args.len());
+        let mut compiled_args: Vec<FloatValue> = Vec::with_capacity(args.len());
 
         for arg in args {
-            compiled_args.push(self.codegen(arg)?);
+            compiled_args.push(self.codegen(arg)?.try_into().ok()?);
         }
 
         let compiled_args: Vec<BasicMetadataValueEnum> =
@@ -98,11 +111,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             .map(|val| val.into_float_value())
     }
 
-    fn codegen_prototype(&self) -> FloatValue<'ctx> {
+    fn codegen_prototype(&self) -> Option<FloatValue<'ctx>> {
         todo!()
     }
 
-    fn codegen_function(&self) -> FloatValue<'ctx> {
+    fn codegen_function(&self) -> Option<FloatValue<'ctx>> {
         todo!()
     }
 }
