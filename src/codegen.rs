@@ -1,14 +1,17 @@
+use core::slice::SlicePattern;
 use std::collections::HashMap;
 
 use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::values::{BasicValue, FloatValue, PointerValue};
+use inkwell::module::Module;
+use inkwell::values::{BasicMetadataValueEnum, BasicValue, FloatValue, PointerValue};
 use inkwell::FloatPredicate;
 
 pub struct CodeGen<'a, 'ctx> {
     pub builder: &'a Builder<'ctx>,
     pub context: &'ctx Context,
+    pub module: &'ctx Module<'ctx>,
     pub named_values: HashMap<String, PointerValue<'ctx>>,
 }
 
@@ -72,7 +75,27 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     }
 
     fn codegen_call(&self, callee: &String, args: &Vec<Expr>) -> Option<FloatValue<'ctx>> {
-        todo!()
+        let callee_fn = self.module.get_function(callee)?;
+
+        let callee_params = callee_fn.get_params();
+        if callee_params.len() != args.len() {
+            return None;
+        }
+
+        let mut compiled_args = Vec::with_capacity(args.len());
+
+        for arg in args {
+            compiled_args.push(self.codegen(arg)?);
+        }
+
+        let compiled_args: Vec<BasicMetadataValueEnum> =
+            compiled_args.into_iter().map(|val| val.into()).collect();
+
+        self.builder
+            .build_call(callee_fn, compiled_args.as_slice(), callee)
+            .try_as_basic_value()
+            .left()
+            .map(|val| val.into_float_value())
     }
 
     fn codegen_prototype(&self) -> FloatValue<'ctx> {
