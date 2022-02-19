@@ -34,7 +34,7 @@ pub struct Parser {
 impl Parser {
     fn log_error(&self, str: String) -> Option<Expr> {
         eprintln!("log_error: {}", str);
-        return None;
+        None
     }
 }
 
@@ -58,7 +58,7 @@ impl Parse for Parser {
             kind: ExprKind::Number(value),
         };
         lexer.get_next_token();
-        return result;
+        result
     }
 
     fn parse_paren_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
@@ -75,7 +75,7 @@ impl Parse for Parser {
         // Eat ')'
         lexer.get_next_token();
 
-        return result.into();
+        result.into()
     }
 
     fn parse_identifier_prefixed_expr<L: Lex>(
@@ -122,7 +122,7 @@ impl Parse for Parser {
             args: call_args,
         };
 
-        return Expr { kind }.into();
+        Expr { kind }.into()
     }
 
     fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {

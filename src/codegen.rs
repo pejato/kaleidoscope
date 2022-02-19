@@ -25,23 +25,21 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
 
             ExprKind::Variable { ref name } => self
                 .codegen_variable(name)
-                .map(|val| val.as_any_value_enum().into()),
+                .map(|val| val.as_any_value_enum()),
 
             ExprKind::Binary { operator, lhs, rhs } => self
                 .codegen_binary(*operator, lhs, rhs)
-                .map(|val| val.as_any_value_enum().into()),
+                .map(|val| val.as_any_value_enum()),
 
             ExprKind::Call { callee, args } => self
                 .codegen_call(callee, args)
-                .map(|val| val.as_any_value_enum().into()),
+                .map(|val| val.as_any_value_enum()),
 
             ExprKind::Prototype { args, name } => self
                 .codegen_prototype(args, name)
-                .map(|val| val.as_any_value_enum().into()),
+                .map(|val| val.as_any_value_enum()),
 
-            ExprKind::Function { .. } => self
-                .codegen_function()
-                .map(|val| val.as_any_value_enum().into()),
+            ExprKind::Function { .. } => self.codegen_function().map(|val| val.as_any_value_enum()),
         }
     }
 }
@@ -51,7 +49,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(&self, name: &String) -> Option<FloatValue<'ctx>> {
+    fn codegen_variable(&self, name: &str) -> Option<FloatValue<'ctx>> {
         // Note: This wouldn't work if we had non float types..
         self.named_values
             .get(name)
@@ -59,12 +57,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             .map(|instr| instr.into_float_value())
     }
 
-    fn codegen_binary(
-        &self,
-        op: char,
-        lhs: &Box<Expr>,
-        rhs: &Box<Expr>,
-    ) -> Option<FloatValue<'ctx>> {
+    fn codegen_binary(&self, op: char, lhs: &Expr, rhs: &Expr) -> Option<FloatValue<'ctx>> {
         let lhs: FloatValue = self.codegen(lhs)?.try_into().ok()?;
         let rhs: FloatValue = self.codegen(rhs)?.try_into().ok()?;
 
@@ -89,7 +82,7 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         }
     }
 
-    fn codegen_call(&self, callee: &String, args: &Vec<Expr>) -> Option<FloatValue<'ctx>> {
+    fn codegen_call(&self, callee: &str, args: &[Expr]) -> Option<FloatValue<'ctx>> {
         let callee_fn = self.module.get_function(callee)?;
 
         let callee_params = callee_fn.get_params();
@@ -113,9 +106,9 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             .map(|val| val.into_float_value())
     }
 
-    fn codegen_prototype(&self, args: &Vec<String>, name: &String) -> Option<FunctionValue<'ctx>> {
+    fn codegen_prototype(&self, args: &[String], name: &str) -> Option<FunctionValue<'ctx>> {
         let param_types: Vec<BasicMetadataTypeEnum> = args
-            .into_iter()
+            .iter()
             .map(|_| self.context.f64_type().into())
             .collect();
 
@@ -129,13 +122,11 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             .add_function(name, fn_type, Linkage::External.into());
 
         // TODO: Does this work as expected?
-        let mut index = 0;
-        for param in the_fn.get_param_iter() {
+        for (index, param) in the_fn.get_param_iter().enumerate() {
             param.set_name(&index.to_string());
-            index += 1;
         }
 
-        return Some(the_fn);
+        Some(the_fn)
     }
 
     fn codegen_function(&self) -> Option<FloatValue<'ctx>> {

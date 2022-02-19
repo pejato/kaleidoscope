@@ -19,3 +19,9 @@ impl Environment {
             .insert(op_precedence_pair.0, op_precedence_pair.1);
     }
 }
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
+}

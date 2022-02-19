@@ -24,7 +24,7 @@ impl Drive for Driver {
         Driver {
             parser: Parser::new(),
             lexer: Lexer::new(input),
-            output: output,
+            output,
         }
     }
     fn run(&mut self) -> Result<(), std::io::Error> {
