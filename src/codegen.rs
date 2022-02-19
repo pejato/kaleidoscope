@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ast::{Expr, ExprKind};
-use inkwell::basic_block::BasicBlock;
+
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::{Linkage, Module};
