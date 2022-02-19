@@ -3,8 +3,12 @@ use std::collections::HashMap;
 use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::module::Module;
-use inkwell::values::{AnyValue, AnyValueEnum, BasicMetadataValueEnum, FloatValue, PointerValue};
+use inkwell::module::{Linkage, Module};
+use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::values::{
+    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, FloatValue, FunctionValue,
+    PointerValue,
+};
 use inkwell::FloatPredicate;
 
 pub struct CodeGen<'a, 'ctx> {
@@ -13,8 +17,6 @@ pub struct CodeGen<'a, 'ctx> {
     pub module: &'ctx Module<'ctx>,
     pub named_values: HashMap<String, PointerValue<'ctx>>,
 }
-
-// TODO: How should we handle LLVMValueRef potentially containing nullptr?
 
 impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     fn codegen(&self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
@@ -33,8 +35,8 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
                 .codegen_call(callee, args)
                 .map(|val| val.as_any_value_enum().into()),
 
-            ExprKind::Prototype { .. } => self
-                .codegen_prototype()
+            ExprKind::Prototype { args, name } => self
+                .codegen_prototype(args, name)
                 .map(|val| val.as_any_value_enum().into()),
 
             ExprKind::Function { .. } => self
@@ -111,8 +113,29 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
             .map(|val| val.into_float_value())
     }
 
-    fn codegen_prototype(&self) -> Option<FloatValue<'ctx>> {
-        todo!()
+    fn codegen_prototype(&self, args: &Vec<String>, name: &String) -> Option<FunctionValue<'ctx>> {
+        let param_types: Vec<BasicMetadataTypeEnum> = args
+            .into_iter()
+            .map(|_| self.context.f64_type().into())
+            .collect();
+
+        let fn_type = self
+            .context
+            .f64_type()
+            .fn_type(param_types.as_slice(), false);
+
+        let the_fn = self
+            .module
+            .add_function(name, fn_type, Linkage::External.into());
+
+        // TODO: Does this work as expected?
+        let mut index = 0;
+        for param in the_fn.get_param_iter() {
+            param.set_name(&index.to_string());
+            index += 1;
+        }
+
+        return Some(the_fn);
     }
 
     fn codegen_function(&self) -> Option<FloatValue<'ctx>> {
