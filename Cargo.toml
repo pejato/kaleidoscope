@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 scopeguard = "1.1.*"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm13-0"] }
+inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "c0e13b7", features = ["llvm13-0"] }
 
 [dev-dependencies]
 pretty_assertions = { version = "1.0.0" }
