@@ -42,7 +42,7 @@ where
 
     fn new(reader: T) -> Self {
         Lexer {
-            reader: reader,
+            reader,
             buffer: None,
             char_buffer: None,
             byte_buffer: [0],
@@ -50,7 +50,7 @@ where
     }
 
     fn get_next_token(&mut self) {
-        self.buffer = self.get_token().into();
+        self.buffer = self.get_token();
     }
 
     fn current_token(&self) -> &Option<Token> {
@@ -104,13 +104,13 @@ where
 
         // Def, Extern, or Identifier
         if ch.is_ascii_alphabetic() {
-            return self.tok_def_extern_or_ident().into();
+            return self.tok_def_extern_or_ident();
             // Number
         } else if ch.is_ascii_digit() || ch == '.' {
             return self.tok_number();
             // Comment
         } else if ch == '#' {
-            return self.tok_comment().into();
+            return self.tok_comment();
         }
 
         self.try_get_char(false);
@@ -139,7 +139,7 @@ where
             match self.char_buffer {
                 Some(c) => {
                     if does_eat_whitespace && c.is_ascii_whitespace() {
-                        ()
+                        
                     } else {
                         return Some(c);
                     }
@@ -174,7 +174,7 @@ where
         }
 
         let num_val = num_string.parse::<f64>().ok()?;
-        return Token::Number(num_val).into();
+        Token::Number(num_val).into()
     }
 
     fn tok_comment(&mut self) -> Option<Token> {

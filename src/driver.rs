@@ -1,5 +1,4 @@
 use crate::{
-    kaleidoscope_context::KaleidoscopeContext,
     lexer::{Lex, Lexer, Token},
     parser::{Parse, Parser},
 };
@@ -17,7 +16,6 @@ pub trait Drive {
 pub struct Driver {
     parser: Parser,
     lexer: Lexer<Box<dyn Read>>,
-    context: KaleidoscopeContext,
     output: Box<dyn Write>,
 }
 
@@ -26,8 +24,7 @@ impl Drive for Driver {
         Driver {
             parser: Parser::new(),
             lexer: Lexer::new(input),
-            context: KaleidoscopeContext::new(),
-            output: output,
+            output,
         }
     }
     fn run(&mut self) -> Result<(), std::io::Error> {

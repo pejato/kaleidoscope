@@ -224,7 +224,7 @@ fn test_get_token_integration_all_tokens() {
 
     result = lexer.get_token();
     match result {
-        Some(Identifier(s)) if s == "y".to_string() => (),
+        Some(Identifier(s)) if s == *"y" => (),
         _ => assert!(
             false,
             "Expected {:?} but got {:?}",

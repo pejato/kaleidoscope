@@ -233,12 +233,10 @@ fn test_parse_multiple_ops() {
                                 },
                             }
                             .into(),
-                        }
-                        .into(),
+                        },
                     }
                     .into(),
-                }
-                .into(),
+                },
             }
             .into(),
             rhs: Expr { kind: Number(3.0) }.into(),
@@ -443,7 +441,7 @@ fn test_parse_top_level_expr_legal_basic() {
                     rhs: Expr {
                         kind: Call {
                             callee: "func".to_owned(),
-                            args: { vec![Expr { kind: Number(30.0) }.into()] },
+                            args: { vec![Expr { kind: Number(30.0) }] },
                         },
                     }
                     .into(),

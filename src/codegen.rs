@@ -1,161 +1,180 @@
-use scopeguard::defer;
-use std::ffi::CString;
-use std::ptr::null_mut;
-
-use llvm_sys::core::{
-    LLVMArrayType, LLVMBuildCall, LLVMBuildFAdd, LLVMBuildFCmp, LLVMBuildFMul, LLVMBuildFSub,
-    LLVMBuildUIToFP, LLVMConstReal, LLVMCreateBuilder, LLVMDisposeBuilder, LLVMDoubleType,
-    LLVMGetNamedFunction, LLVMGetNumOperands,
-};
-use llvm_sys::{prelude::*, LLVMRealPredicate};
+use std::collections::HashMap;
 
 use crate::ast::{Expr, ExprKind};
-use crate::kaleidoscope_context::KaleidoscopeContext;
 
-pub trait CodeGen {
-    type Context;
-    fn codegen(&self, context: &mut Self::Context) -> Option<LLVMValueRef>;
+use inkwell::builder::Builder;
+use inkwell::context::Context;
+use inkwell::module::{Linkage, Module};
+use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::values::{
+    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue,
+    FunctionValue, PointerValue,
+};
+use inkwell::FloatPredicate;
+
+pub struct CodeGen<'a, 'ctx> {
+    pub builder: &'a Builder<'ctx>,
+    pub context: &'ctx Context,
+    pub module: &'ctx Module<'ctx>,
+    pub named_values: HashMap<String, PointerValue<'ctx>>,
 }
 
-// TODO: How should we handle LLVMValueRef potentially containing nullptr?
+impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    fn codegen(&mut self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
+        match &expr.kind {
+            ExprKind::Number(num) => self.codegen_number(*num).as_any_value_enum().into(),
 
-impl CodeGen for Expr {
-    type Context = KaleidoscopeContext;
+            ExprKind::Variable { ref name } => self
+                .codegen_variable(name)
+                .map(|val| val.as_any_value_enum()),
 
-    fn codegen(&self, context: &mut Self::Context) -> Option<LLVMValueRef> {
-        match &self.kind {
-            ExprKind::Number(num) => self.codegen_number(*num).into(),
-            ExprKind::Variable { ref name } => self.codegen_variable(name, &context),
-            ExprKind::Binary { operator, lhs, rhs } => {
-                self.codegen_binary(*operator, lhs, rhs, context).into()
-            }
-            ExprKind::Call { callee, args } => self.codegen_call(callee, args, &context).into(),
-            ExprKind::Prototype { .. } => self.codegen_prototype().into(),
-            ExprKind::Function { .. } => self.codegen_function().into(),
+            ExprKind::Binary { operator, lhs, rhs } => self
+                .codegen_binary(*operator, lhs, rhs)
+                .map(|val| val.as_any_value_enum()),
+
+            ExprKind::Call { callee, args } => self
+                .codegen_call(callee, args)
+                .map(|val| val.as_any_value_enum()),
+
+            ExprKind::Prototype { args, name } => self
+                .codegen_prototype(args, name)
+                .map(|val| val.as_any_value_enum()),
+
+            ExprKind::Function { prototype, body } => self
+                .codegen_function(prototype, body)
+                .map(|val| val.as_any_value_enum()),
         }
     }
 }
 
-fn log_error(message: &str) -> Option<LLVMValueRef> {
-    eprintln!("{}", message);
-    None
-}
-
-impl Expr {
-    fn codegen_number(&self, num: f64) -> LLVMValueRef {
-        unsafe { return LLVMConstReal(LLVMDoubleType(), num) }
+impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+    fn codegen_number(&self, num: f64) -> FloatValue<'ctx> {
+        self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(
-        &self,
-        name: &String,
-        context: &<Self as CodeGen>::Context,
-    ) -> Option<LLVMValueRef> {
-        context.named_values.get(name).map(|v| *v)
+    fn codegen_variable(&self, name: &str) -> Option<FloatValue<'ctx>> {
+        // Note: This wouldn't work if we had non float types..
+        self.named_values
+            .get(name)
+            .map(|val| self.builder.build_load(*val, name))
+            .map(|instr| instr.into_float_value())
     }
 
-    fn codegen_binary(
-        &self,
-        op: char,
-        lhs: &Box<Expr>,
-        rhs: &Box<Expr>,
-        context: &mut <Self as CodeGen>::Context,
-    ) -> Option<LLVMValueRef> {
-        let lhs_gen = lhs.codegen(context);
-        let rhs_gen = rhs.codegen(context);
+    fn codegen_binary(&mut self, op: char, lhs: &Expr, rhs: &Expr) -> Option<FloatValue<'ctx>> {
+        let lhs: FloatValue = self.codegen(lhs)?.try_into().ok()?;
+        let rhs: FloatValue = self.codegen(rhs)?.try_into().ok()?;
 
-        if lhs_gen.is_none() || rhs_gen.is_none() {
+        // inkwell::values::FloatMathValue
+        match op {
+            '+' => self.builder.build_float_add(lhs, rhs, "addtmp").into(),
+            '-' => self.builder.build_float_sub(lhs, rhs, "subtmp").into(),
+            '*' => self.builder.build_float_mul(lhs, rhs, "multmp").into(),
+            '<' => {
+                let cmp_as_intval =
+                    self.builder
+                        .build_float_compare(FloatPredicate::ULT, lhs, rhs, "cmptmp");
+
+                self.builder
+                    .build_unsigned_int_to_float(cmp_as_intval, self.context.f64_type(), "booltmp")
+                    .into()
+            }
+            _ => {
+                eprintln!("Unexpected operator {}", op);
+                None
+            }
+        }
+    }
+
+    fn codegen_call(&mut self, callee: &str, args: &[Expr]) -> Option<FloatValue<'ctx>> {
+        let callee_fn = self.module.get_function(callee)?;
+
+        let callee_params = callee_fn.get_params();
+        if callee_params.len() != args.len() {
             return None;
         }
 
-        let lhs_gen = lhs_gen.unwrap();
-        let rhs_gen = rhs_gen.unwrap();
+        let mut compiled_args: Vec<FloatValue> = Vec::with_capacity(args.len());
 
-        unsafe {
-            match op {
-                '+' => LLVMBuildFAdd(
-                    context.builder,
-                    lhs_gen,
-                    rhs_gen,
-                    context.get_cchar_ptr(&"addtmp".into()),
-                )
-                .into(),
-                '-' => LLVMBuildFSub(
-                    context.builder,
-                    lhs_gen,
-                    rhs_gen,
-                    context.get_cchar_ptr(&"subtmp".into()),
-                )
-                .into(),
-                '*' => LLVMBuildFMul(
-                    context.builder,
-                    lhs_gen,
-                    rhs_gen,
-                    context.get_cchar_ptr(&"multmp".into()),
-                )
-                .into(),
-                '<' => {
-                    // L = Builder.CreateFCmpULT(L, R, "cmptmp");
-                    let lhs_gen = LLVMBuildFCmp(
-                        context.builder,
-                        LLVMRealPredicate::LLVMRealULT,
-                        lhs_gen,
-                        rhs_gen,
-                        context.get_cchar_ptr(&"cmptmp".into()),
-                    );
-                    LLVMBuildUIToFP(
-                        context.builder,
-                        lhs_gen,
-                        LLVMDoubleType(),
-                        context.get_cchar_ptr(&"booltmp".into()),
-                    )
-                    .into()
+        for arg in args {
+            compiled_args.push(self.codegen(arg)?.try_into().ok()?);
+        }
+
+        let compiled_args: Vec<BasicMetadataValueEnum> =
+            compiled_args.into_iter().map(|val| val.into()).collect();
+
+        self.builder
+            .build_call(callee_fn, compiled_args.as_slice(), callee)
+            .try_as_basic_value()
+            .left()
+            .map(|val| val.into_float_value())
+    }
+
+    fn codegen_prototype(&self, args: &[String], name: &str) -> Option<FunctionValue<'ctx>> {
+        let param_types: Vec<BasicMetadataTypeEnum> = args
+            .iter()
+            .map(|_| self.context.f64_type().into())
+            .collect();
+
+        let fn_type = self
+            .context
+            .f64_type()
+            .fn_type(param_types.as_slice(), false);
+
+        let the_fn = self
+            .module
+            .add_function(name, fn_type, Linkage::External.into());
+
+        // TODO: Does this work as expected?
+        for (index, param) in the_fn.get_param_iter().enumerate() {
+            param.set_name(&index.to_string());
+        }
+
+        Some(the_fn)
+    }
+
+    fn codegen_function(&mut self, prototype: &Expr, body: &Expr) -> Option<FunctionValue<'ctx>> {
+        let (fn_name, args) = match &prototype.kind {
+            ExprKind::Prototype { name, args } => Some((name, args)),
+            _ => None,
+        }?;
+
+        let the_fn = self
+            .module
+            .get_function(fn_name)
+            .or_else(|| self.codegen_prototype(args, fn_name))?;
+
+        // Checking to see if the fn has already been defined. This is how LLVM's Function.empty() works under the hood
+        if the_fn.count_basic_blocks() > 0 {
+            eprintln!("Function {} cannot be redefined.", fn_name);
+            return None;
+        }
+
+        let bb = self.context.append_basic_block(the_fn, "entry");
+        self.builder.position_at_end(bb);
+
+        // TODO: This is how the Kaleidoscope tutorial does it, but it feels kinda yucky to mutate state like this..?
+        self.named_values.clear();
+        for param in the_fn.get_param_iter() {
+            self.named_values
+                .insert(fn_name.clone(), param.into_pointer_value());
+        }
+
+        match self.codegen(body) {
+            Some(value) => {
+                let value: BasicValueEnum = value.try_into().ok()?;
+                self.builder.build_return(Some(&value));
+
+                if the_fn.verify(true) {
+                    Some(the_fn)
+                } else {
+                    unsafe { the_fn.delete() };
+                    None
                 }
-                _ => log_error(&format!("Invalid binary operator {:#?}", op)),
+            }
+            None => {
+                unsafe { the_fn.delete() };
+                None
             }
         }
-    }
-
-    fn codegen_call(
-        &self,
-        callee: &String,
-        args: &Vec<Expr>,
-        context: &<Self as CodeGen>::Context,
-    ) -> Option<LLVMValueRef> {
-        unsafe {
-            let callee_as_cstr = CString::new(callee.as_bytes()).expect("CString new failed");
-            let callee_fn = LLVMGetNamedFunction(context.module, callee_as_cstr.as_ptr());
-            if callee_fn.is_null() {
-                return log_error("Unknown function referenced");
-            }
-
-            let num_operands = LLVMGetNumOperands(callee_fn);
-            if num_operands != args.len().try_into().ok()? {
-                return log_error("Incorrect # arguments passed");
-            }
-
-            let builder = LLVMCreateBuilder();
-
-            // let llvm_args: *mut LLVMValueRef = llmv_args.dat
-
-            defer! { LLVMDisposeBuilder(builder); }
-            // TODO: I think we should figure out whether we can just ask LLVM for this pointer..
-            return LLVMBuildCall(
-                builder,
-                callee_fn,
-                args.as_mut_ptr(),
-                num_operands.try_into().ok()?,
-                callee_as_cstr.as_ptr(),
-            )
-            .into();
-        }
-    }
-
-    fn codegen_prototype(&self) -> LLVMValueRef {
-        todo!()
-    }
-
-    fn codegen_function(&self) -> LLVMValueRef {
-        todo!()
     }
 }
