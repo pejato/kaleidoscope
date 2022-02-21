@@ -14,6 +14,7 @@ jobs:
     uses: ./.github/workflows/install_llvm.yml
     with:
       version: "13.0"
+      directory: "home/runner/work/llvm"
 
   build:
     needs: install_llvm
@@ -23,10 +24,8 @@ jobs:
     - name: Git Config
       run: git config --global init.defaultBranch main
     - uses: actions/checkout@v2
-      with:
-        clean: false
     - name: List Files
-      run: ls /home/runner/work/kaleidoscope/kaleidoscope/llvm
+      run: ls home/runner/work/llvm"
     - name: Build
       run: cargo build --verbose
     - name: Run tests
