@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Git Config
+      run: git config --global init.defaultBranch main
     - uses: actions/checkout@v2
       with:
         clean: false
