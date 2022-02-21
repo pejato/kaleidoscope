@@ -22,13 +22,13 @@ jobs:
       id: cache-llvm
       uses: actions/cache@v2
       with:
-        path: $LLVM_INSTALL_DIR
-        key: $LLVM_INSTALL_VERSION
+        path: ${{ env.LLVM_INSTALL_DIR }}
+        key: ${{ env.LLVM_INSTALL_VERSION }}
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v1
       with:
-        version: $LLVM_INSTALL_VERSION
-        directory: $LLVM_INSTALL_DIR
+        version: ${{ env.LLVM_INSTALL_VERSION }}
+        directory: ${{ env.LLVM_INSTALL_DIR }}
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
     - uses: actions/checkout@v2
     - name: Build
