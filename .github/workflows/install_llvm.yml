@@ -25,5 +25,6 @@ jobs:
       uses: KyleMayes/install-llvm-action@v1
       with:
         version: ${{ inputs.version }}
+        directory: ${{ inputs.directory }}
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
 
