@@ -25,5 +25,5 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
-  clippy_check.yml:
+  clippy_check:
     uses: ./.github/workflows/clippy_check.yml
