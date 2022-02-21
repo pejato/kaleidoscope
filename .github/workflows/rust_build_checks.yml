@@ -18,6 +18,7 @@ jobs:
     steps:
     - name: Git Config
       run: git config --global init.defaultBranch main
+    - uses: actions/checkout@v2
     - name: Cache LLVM and Clang
       id: cache-llvm
       uses: actions/cache@v2
@@ -30,7 +31,6 @@ jobs:
         version: ${{ env.LLVM_INSTALL_VERSION }}
         directory: ${{ env.LLVM_INSTALL_DIR }}
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
-    - uses: actions/checkout@v2
     - name: Build
       run: cargo build --verbose
     - name: Run tests
