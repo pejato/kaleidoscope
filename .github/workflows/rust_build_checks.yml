@@ -25,7 +25,7 @@ jobs:
       run: git config --global init.defaultBranch main
     - uses: actions/checkout@v2
     - name: List Files
-      run: ls home/runner/work/llvm"
+      run: ls home/runner/work/llvm
     - name: Build
       run: cargo build --verbose
     - name: Run tests
