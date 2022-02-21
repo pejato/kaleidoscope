@@ -23,6 +23,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         clean: false
+    - name: List Files
+      run: ls /home/runner/work/kaleidoscope/kaleidoscope/llvm
     - name: Build
       run: cargo build --verbose
     - name: Run tests
