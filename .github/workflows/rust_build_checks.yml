@@ -19,7 +19,6 @@ jobs:
     steps:
     - name: Git Config
       run: git config --global init.defaultBranch main
-    - name: Install LLVM
     - name: Cache LLVM and Clang
       id: cache-llvm
       uses: actions/cache@v2
