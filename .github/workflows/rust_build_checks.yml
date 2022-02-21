@@ -8,18 +8,39 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  LLVM_INSTALL_DIR: "llvm"
+  LLVM_INSTALL_VERSION: "13.0"
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
+    - name: Git Config
+      run: git config --global init.defaultBranch main
     - uses: actions/checkout@v2
-    - uses: KyleMayes/install-llvm-action@v1
-      with: 
-        version: "13.0"
+    - name: Cache LLVM and Clang
+      id: cache-llvm
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.LLVM_INSTALL_DIR }}
+        key: ${{ env.LLVM_INSTALL_VERSION }}
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: ${{ env.LLVM_INSTALL_VERSION }}
+        directory: ${{ env.LLVM_INSTALL_DIR }}
+        cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+    - uses: actions-rs/toolchain@v1
+      with:
+          toolchain: nightly
+          components: clippy
+          override: true
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features
