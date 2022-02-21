@@ -16,6 +16,7 @@ jobs:
       version: "13.0"
 
   build:
+    needs: install_llvm
     runs-on: ubuntu-latest
 
     steps:
@@ -26,4 +27,5 @@ jobs:
       run: cargo test --verbose
 
   clippy_check:
+    needs: install_llvm
     uses: ./.github/workflows/clippy_check.yml
