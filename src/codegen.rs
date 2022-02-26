@@ -12,14 +12,14 @@ use inkwell::values::{
 };
 use inkwell::FloatPredicate;
 
-pub struct CodeGen<'a, 'ctx> {
-    pub builder: &'a Builder<'ctx>,
+pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
-    pub module: &'ctx Module<'ctx>,
+    pub builder: Builder<'ctx>,
+    pub module: Module<'ctx>,
     pub named_values: HashMap<String, PointerValue<'ctx>>,
 }
 
-impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+impl<'ctx> CodeGen<'ctx> {
     fn codegen(&mut self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
         match &expr.kind {
             ExprKind::Number(num) => self.codegen_number(*num).as_any_value_enum().into(),
@@ -47,17 +47,13 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
     }
 }
 
-impl<'a, 'ctx> CodeGen<'a, 'ctx> {
+impl<'ctx> CodeGen<'ctx> {
     fn codegen_number(&self, num: f64) -> FloatValue<'ctx> {
         self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(&self, name: &str) -> Option<FloatValue<'ctx>> {
-        // Note: This wouldn't work if we had non float types..
-        self.named_values
-            .get(name)
-            .map(|val| self.builder.build_load(*val, name))
-            .map(|instr| instr.into_float_value())
+    fn codegen_variable(&self, name: &str) -> Option<PointerValue<'ctx>> {
+        self.named_values.get(name).cloned()
     }
 
     fn codegen_binary(&mut self, op: char, lhs: &Expr, rhs: &Expr) -> Option<FloatValue<'ctx>> {
@@ -178,3 +174,6 @@ impl<'a, 'ctx> CodeGen<'a, 'ctx> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

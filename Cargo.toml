@@ -11,3 +11,4 @@ inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "c0e13b7", featur
 
 [dev-dependencies]
 pretty_assertions = { version = "1.0.0" }
+llvm-sys = { version = "130.0.3" }
