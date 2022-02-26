@@ -1,5 +1,4 @@
 use super::*;
-use crate::test_utilities::test::approx_equal;
 use inkwell::values::PointerMathValue;
 use llvm_sys::LLVMValue;
 use pretty_assertions::assert_eq;
@@ -17,7 +16,7 @@ fn test_codegen_number() {
     };
     let result = generator.codegen_number(32.0);
 
-    assert!(approx_equal(result.get_constant().unwrap().0, 32.0, 5));
+    assert_eq!(result.get_constant().unwrap().0, 32.0);
 }
 
 #[test]
@@ -43,4 +42,148 @@ fn test_codegen_var() {
 
     let result = generator.codegen_variable("x").unwrap();
     assert_eq!(result, pointer_value);
+}
+
+#[test]
+fn test_codegen_bin_plus() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let lhs = Expr {
+        kind: ExprKind::Number(14.0),
+    };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('+', &lhs, &rhs).unwrap();
+    assert_eq!(result.get_constant().unwrap().0, 55.0);
+}
+
+#[test]
+fn test_codegen_bin_minus() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let lhs = Expr {
+        kind: ExprKind::Number(14.0),
+    };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('-', &lhs, &rhs).unwrap();
+    assert_eq!(result.get_constant().unwrap().0, -27.0);
+}
+
+#[test]
+fn test_codegen_bin_mult() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let lhs = Expr {
+        kind: ExprKind::Number(14.0),
+    };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('*', &lhs, &rhs).unwrap();
+    assert_eq!(result.get_constant().unwrap().0, 574.0);
+}
+
+#[test]
+fn test_codegen_bin_less_than_true() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let lhs = Expr {
+        kind: ExprKind::Number(14.0),
+    };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('<', &lhs, &rhs).unwrap();
+    assert_eq!(result.get_constant().unwrap().0, 1.0);
+}
+
+#[test]
+fn test_codegen_bin_less_than_false() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let lhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('<', &lhs, &rhs).unwrap();
+    assert_eq!(result.get_constant().unwrap().0, 0.0);
+}
+
+#[test]
+fn test_codegen_bin_unknown() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let lhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('#', &lhs, &rhs);
+    assert_eq!(result, None);
 }
