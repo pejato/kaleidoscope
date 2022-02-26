@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 use super::*;
 use inkwell::values::PointerMathValue;
 use llvm_sys::LLVMValue;
@@ -186,4 +188,34 @@ fn test_codegen_bin_unknown() {
 
     let result = generator.codegen_binary('#', &lhs, &rhs);
     assert_eq!(result, None);
+}
+
+#[test]
+fn test_codegen_fn_prototype() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let args = vec!["x".into(), "y".into()];
+    let name = "Moonlight";
+    let result = generator.codegen_prototype(&args, name).unwrap();
+
+    assert_eq!(result.get_params().len(), 2);
+    assert!(result.get_type().get_return_type().unwrap().is_float_type());
+    assert!(result
+        .get_type()
+        .get_param_types()
+        .into_iter()
+        .all(|ty| ty.is_float_type()));
+    assert_eq!(
+        result.get_name().to_owned(),
+        CString::new("Moonlight").unwrap()
+    );
 }
