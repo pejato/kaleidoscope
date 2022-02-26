@@ -1,8 +1,7 @@
 use std::ffi::CString;
 
 use super::*;
-use inkwell::values::PointerMathValue;
-use llvm_sys::LLVMValue;
+use indoc::indoc;
 use pretty_assertions::assert_eq;
 
 #[test]
@@ -27,13 +26,11 @@ fn test_codegen_var() {
     let module = context.create_module("Test");
     let builder = context.create_builder();
 
-    // This is super gross but all we want to do is verify that this method fetches the PointerValue corresponding to
+    // This is kinda weird but all we want to do is verify that this method fetches the AnyValueEnum corresponding to
     // the passed variable name.
-    let llvm_value_mock = 42 as *mut LLVMValue;
-
-    let pointer_value = inkwell::values::PointerValue::new(llvm_value_mock);
+    let any_value = context.f64_type().const_float(30.0).as_any_value_enum();
     let mut named_values = HashMap::new();
-    named_values.insert("x".to_owned(), pointer_value);
+    named_values.insert("x".to_owned(), any_value);
 
     let generator = CodeGen {
         context: &context,
@@ -43,7 +40,7 @@ fn test_codegen_var() {
     };
 
     let result = generator.codegen_variable("x").unwrap();
-    assert_eq!(result, pointer_value);
+    assert_eq!(result, any_value);
 }
 
 #[test]
@@ -214,8 +211,70 @@ fn test_codegen_fn_prototype() {
         .get_param_types()
         .into_iter()
         .all(|ty| ty.is_float_type()));
+
+    let param_names: Vec<String> = result
+        .get_param_iter()
+        .filter_map(|param| {
+            param
+                .into_float_value()
+                .get_name()
+                .to_str()
+                .ok()
+                .map(|n| n.to_string())
+        })
+        .collect();
+
+    assert_eq!(param_names, vec!["x".to_string(), "y".to_string()]);
     assert_eq!(
         result.get_name().to_owned(),
         CString::new("Moonlight").unwrap()
     );
+}
+
+#[test]
+fn test_codegen_function() {
+    let context = Context::create();
+    let module = context.create_module("Test");
+    let builder = context.create_builder();
+
+    let mut generator = CodeGen {
+        context: &context,
+        builder,
+        module,
+        named_values: HashMap::new(),
+    };
+
+    let prototype = Expr {
+        kind: ExprKind::Prototype {
+            name: "Juwan".into(),
+            args: vec!["x".into(), "y".into()],
+        },
+    };
+    let body = Expr {
+        kind: ExprKind::Binary {
+            operator: '+',
+            lhs: Expr {
+                kind: ExprKind::Variable { name: "x".into() },
+            }
+            .into(),
+            rhs: Expr {
+                kind: ExprKind::Variable { name: "y".into() },
+            }
+            .into(),
+        },
+    };
+
+    let result = generator.codegen_function(&prototype, &body);
+    assert!(result.is_some());
+    let result = result.unwrap();
+    let expected = indoc! {"
+      define double @Juwan(double %x, double %y) {
+      entry:
+        %addtmp = fadd double %x, %y
+        ret double %addtmp
+      }
+    "};
+
+    // The textual output includes param types, names, and basic blocks so I think it's sufficient to assert on it
+    assert_eq!(result.print_to_string().to_string(), expected);
 }
