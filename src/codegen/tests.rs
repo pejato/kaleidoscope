@@ -36,8 +36,8 @@ fn test_codegen_var() {
 
     let generator = CodeGen {
         context: &context,
-        builder: builder,
-        module: module,
+        builder,
+        module,
         named_values,
     };
 
