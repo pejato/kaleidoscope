@@ -52,12 +52,8 @@ impl<'ctx> CodeGen<'ctx> {
         self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(&self, name: &str) -> Option<FloatValue<'ctx>> {
-        // Note: This wouldn't work if we had non float types..
-        self.named_values
-            .get(name)
-            .map(|val| self.builder.build_load(*val, name))
-            .map(|instr| instr.into_float_value())
+    fn codegen_variable(&self, name: &str) -> Option<PointerValue<'ctx>> {
+        self.named_values.get(name).cloned()
     }
 
     fn codegen_binary(&mut self, op: char, lhs: &Expr, rhs: &Expr) -> Option<FloatValue<'ctx>> {
