@@ -268,13 +268,113 @@ fn test_codegen_function() {
     assert!(result.is_some());
     let result = result.unwrap();
     let expected = indoc! {"
-      define double @Juwan(double %x, double %y) {
-      entry:
-        %addtmp = fadd double %x, %y
-        ret double %addtmp
-      }
+    define double @Juwan(double %x, double %y) {
+    entry:
+      %addtmp = fadd double %x, %y
+      ret double %addtmp
+    }
     "};
 
     // The textual output includes param types, names, and basic blocks so I think it's sufficient to assert on it
+    assert_eq!(result.print_to_string().to_string(), expected);
+}
+
+#[test]
+fn test_codegen_function_two_calls() {
+    let context = Context::create();
+    let mut generator = make_generator(&context);
+
+    let juwan_proto = Expr {
+        kind: ExprKind::Prototype {
+            name: "Juwan".into(),
+            args: vec!["x".into()],
+        },
+    };
+    let juwan_body = Expr {
+        kind: ExprKind::Binary {
+            operator: '*',
+            lhs: Expr {
+                kind: ExprKind::Variable { name: "x".into() },
+            }
+            .into(),
+            rhs: Expr {
+                kind: ExprKind::Number(2.0),
+            }
+            .into(),
+        },
+    };
+
+    let howard_proto = Expr {
+        kind: ExprKind::Prototype {
+            name: "Howard".into(),
+            args: vec!["y".into()],
+        },
+    };
+    let howard_body = Expr {
+        kind: ExprKind::Binary {
+            operator: '+',
+            lhs: Expr {
+                kind: ExprKind::Variable { name: "y".into() },
+            }
+            .into(),
+            rhs: Expr {
+                kind: ExprKind::Number(4.0),
+            }
+            .into(),
+        },
+    };
+    assert!(generator
+        .codegen_function(&juwan_proto, &juwan_body)
+        .is_some());
+    assert!(generator
+        .codegen_function(&howard_proto, &howard_body)
+        .is_some());
+
+    let juwan_howard_proto = Expr {
+        kind: ExprKind::Prototype {
+            name: "JuwanHoward".into(),
+            args: vec!["x".into(), "y".into()],
+        },
+    };
+    let juwan_howard_body = Expr {
+        kind: ExprKind::Binary {
+            operator: '+',
+            lhs: Expr {
+                kind: ExprKind::Call {
+                    callee: "Juwan".into(),
+                    args: vec![Expr {
+                        kind: ExprKind::Variable { name: "x".into() },
+                    }],
+                },
+            }
+            .into(),
+            rhs: Expr {
+                kind: ExprKind::Call {
+                    callee: "Howard".into(),
+                    args: vec![Expr {
+                        kind: ExprKind::Variable { name: "y".into() },
+                    }],
+                },
+            }
+            .into(),
+        },
+    };
+
+    let result = generator.codegen_function(&juwan_howard_proto, &juwan_howard_body);
+    assert!(result.is_some());
+    let result = result.unwrap();
+
+    // We set the name of call's to call_tmp. This test specifically tests that
+    // later calls don't clobber earlier call_tmp's
+    let expected = indoc! {"
+    define double @JuwanHoward(double %x, double %y) {
+    entry:
+      %call_tmp = call double @Juwan(double %x)
+      %call_tmp1 = call double @Howard(double %y)
+      %addtmp = fadd double %call_tmp, %call_tmp1
+      ret double %addtmp
+    }
+    "};
+
     assert_eq!(result.print_to_string().to_string(), expected);
 }
