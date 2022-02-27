@@ -4,17 +4,21 @@ use super::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 
-#[test]
-fn test_codegen_number() {
-    let context = Context::create();
+fn make_generator(context: &Context) -> CodeGen {
     let module = context.create_module("Test");
     let builder = context.create_builder();
-    let generator = CodeGen {
+    CodeGen {
         context: &context,
         builder: builder,
         module: module,
         named_values: HashMap::new(),
-    };
+    }
+}
+
+#[test]
+fn test_codegen_number() {
+    let context = Context::create();
+    let generator = make_generator(&context);
     let result = generator.codegen_number(32.0);
 
     assert_eq!(result.get_constant().unwrap().0, 32.0);
@@ -23,21 +27,12 @@ fn test_codegen_number() {
 #[test]
 fn test_codegen_var() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
+    let mut generator = make_generator(&context);
 
     // This is kinda weird but all we want to do is verify that this method fetches the AnyValueEnum corresponding to
     // the passed variable name.
     let any_value = context.f64_type().const_float(30.0).as_any_value_enum();
-    let mut named_values = HashMap::new();
-    named_values.insert("x".to_owned(), any_value);
-
-    let generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values,
-    };
+    generator.named_values.insert("x".to_owned(), any_value);
 
     let result = generator.codegen_variable("x").unwrap();
     assert_eq!(result, any_value);
@@ -46,15 +41,7 @@ fn test_codegen_var() {
 #[test]
 fn test_codegen_bin_plus() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let mut generator = make_generator(&context);
 
     let lhs = Expr {
         kind: ExprKind::Number(14.0),
@@ -70,15 +57,7 @@ fn test_codegen_bin_plus() {
 #[test]
 fn test_codegen_bin_minus() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let mut generator = make_generator(&context);
 
     let lhs = Expr {
         kind: ExprKind::Number(14.0),
@@ -94,15 +73,7 @@ fn test_codegen_bin_minus() {
 #[test]
 fn test_codegen_bin_mult() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let mut generator = make_generator(&context);
 
     let lhs = Expr {
         kind: ExprKind::Number(14.0),
@@ -118,15 +89,7 @@ fn test_codegen_bin_mult() {
 #[test]
 fn test_codegen_bin_less_than_true() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let mut generator = make_generator(&context);
 
     let lhs = Expr {
         kind: ExprKind::Number(14.0),
@@ -142,15 +105,7 @@ fn test_codegen_bin_less_than_true() {
 #[test]
 fn test_codegen_bin_less_than_false() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let mut generator = make_generator(&context);
 
     let lhs = Expr {
         kind: ExprKind::Number(41.0),
@@ -166,15 +121,23 @@ fn test_codegen_bin_less_than_false() {
 #[test]
 fn test_codegen_bin_unknown() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
+    let mut generator = make_generator(&context);
 
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
+    let lhs = Expr {
+        kind: ExprKind::Number(41.0),
     };
+    let rhs = Expr {
+        kind: ExprKind::Number(41.0),
+    };
+
+    let result = generator.codegen_binary('#', &lhs, &rhs);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_codegen_call() {
+    let context = Context::create();
+    let mut generator = make_generator(&context);
 
     let lhs = Expr {
         kind: ExprKind::Number(41.0),
@@ -190,15 +153,7 @@ fn test_codegen_bin_unknown() {
 #[test]
 fn test_codegen_fn_prototype() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let generator = make_generator(&context);
 
     let args = vec!["x".into(), "y".into()];
     let name = "Moonlight";
@@ -234,15 +189,7 @@ fn test_codegen_fn_prototype() {
 #[test]
 fn test_codegen_function() {
     let context = Context::create();
-    let module = context.create_module("Test");
-    let builder = context.create_builder();
-
-    let mut generator = CodeGen {
-        context: &context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    };
+    let mut generator = make_generator(&context);
 
     let prototype = Expr {
         kind: ExprKind::Prototype {
