@@ -61,6 +61,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
+name = "indoc"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7906a9fababaeacb774f72410e497a1d18de916322e33797bb2cd29baa23c9e"
+dependencies = [
+ "unindent",
+]
+
+[[package]]
 name = "inkwell"
 version = "0.1.0"
 source = "git+https://github.com/TheDan64/inkwell?rev=c0e13b7#c0e13b70e90f7f35c6704e0a9bb8a00bdb2e75bc"
@@ -87,6 +96,7 @@ dependencies = [
 name = "kaleidoscope"
 version = "0.1.0"
 dependencies = [
+ "indoc",
  "inkwell",
  "llvm-sys",
  "pretty_assertions",
@@ -288,6 +298,12 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unindent"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "514672a55d7380da379785a4d70ca8386c8883ff7eaae877be4d2081cebe73d8"
 
 [[package]]
 name = "winapi"

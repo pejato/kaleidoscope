@@ -8,7 +8,7 @@ use inkwell::module::{Linkage, Module};
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue,
-    FunctionValue, PointerValue,
+    FunctionValue,
 };
 use inkwell::FloatPredicate;
 
@@ -16,7 +16,7 @@ pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
-    pub named_values: HashMap<String, PointerValue<'ctx>>,
+    pub named_values: HashMap<String, AnyValueEnum<'ctx>>,
 }
 
 impl<'ctx> CodeGen<'ctx> {
@@ -52,7 +52,7 @@ impl<'ctx> CodeGen<'ctx> {
         self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(&self, name: &str) -> Option<PointerValue<'ctx>> {
+    fn codegen_variable(&self, name: &str) -> Option<AnyValueEnum<'ctx>> {
         self.named_values.get(name).cloned()
     }
 
@@ -99,7 +99,7 @@ impl<'ctx> CodeGen<'ctx> {
             compiled_args.into_iter().map(|val| val.into()).collect();
 
         self.builder
-            .build_call(callee_fn, compiled_args.as_slice(), callee)
+            .build_call(callee_fn, compiled_args.as_slice(), "call_tmp")
             .try_as_basic_value()
             .left()
             .map(|val| val.into_float_value())
@@ -120,9 +120,8 @@ impl<'ctx> CodeGen<'ctx> {
             .module
             .add_function(name, fn_type, Linkage::External.into());
 
-        // TODO: Does this work as expected?
-        for (index, param) in the_fn.get_param_iter().enumerate() {
-            param.set_name(&index.to_string());
+        for (param, arg) in the_fn.get_param_iter().zip(args.into_iter()) {
+            param.set_name(arg);
         }
 
         Some(the_fn)
@@ -148,11 +147,23 @@ impl<'ctx> CodeGen<'ctx> {
         let bb = self.context.append_basic_block(the_fn, "entry");
         self.builder.position_at_end(bb);
 
-        // TODO: This is how the Kaleidoscope tutorial does it, but it feels kinda yucky to mutate state like this..?
         self.named_values.clear();
+
         for param in the_fn.get_param_iter() {
+            let param_as_float: FloatValue = if param.is_float_value() {
+                Some(param.into_float_value())
+            } else {
+                None
+            }?;
+
+            let param_name = param_as_float
+                .get_name()
+                .to_str()
+                .ok()
+                .map(|s| s.to_string())?;
+
             self.named_values
-                .insert(fn_name.clone(), param.into_pointer_value());
+                .insert(param_name, param.as_any_value_enum());
         }
 
         match self.codegen(body) {

@@ -139,7 +139,6 @@ where
             match self.char_buffer {
                 Some(c) => {
                     if does_eat_whitespace && c.is_ascii_whitespace() {
-                        
                     } else {
                         return Some(c);
                     }
