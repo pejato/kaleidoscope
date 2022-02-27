@@ -120,7 +120,6 @@ impl<'ctx> CodeGen<'ctx> {
             .module
             .add_function(name, fn_type, Linkage::External.into());
 
-        // TODO: Does this work as expected?
         for (param, arg) in the_fn.get_param_iter().zip(args.into_iter()) {
             param.set_name(arg);
         }
@@ -148,7 +147,6 @@ impl<'ctx> CodeGen<'ctx> {
         let bb = self.context.append_basic_block(the_fn, "entry");
         self.builder.position_at_end(bb);
 
-        // TODO: This is how the Kaleidoscope tutorial does it, but it feels kinda yucky to mutate state like this..?
         self.named_values.clear();
 
         for param in the_fn.get_param_iter() {
