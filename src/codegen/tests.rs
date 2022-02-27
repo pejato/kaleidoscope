@@ -136,7 +136,7 @@ fn test_codegen_bin_unknown() {
 
 // TODO: We'll want to have a test for calling fn defined using proto codegen & func codegen
 #[test]
-fn test_codegen_call() {
+fn test_codegen_call_with_gened_prototype() {
     let context = Context::create();
     let mut generator = make_generator(&context);
 
@@ -157,7 +157,50 @@ fn test_codegen_call() {
 
     let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
     let expected =
-        "%flint = call addrspace(0) double @flint(double 6.700000e+01, double 6.700000e+01)";
+        "%call_tmp = call addrspace(0) double @flint(double 6.700000e+01, double 6.700000e+01)";
+    assert_eq!(result_as_string.trim(), expected);
+}
+
+#[test]
+fn test_codegen_call_with_gened_function() {
+    let context = Context::create();
+    let mut generator = make_generator(&context);
+
+    let prototype = Expr {
+        kind: ExprKind::Prototype {
+            name: "Juwan".into(),
+            args: vec!["x".into(), "y".into()],
+        },
+    };
+    let body = Expr {
+        kind: ExprKind::Binary {
+            operator: '+',
+            lhs: Expr {
+                kind: ExprKind::Variable { name: "x".into() },
+            }
+            .into(),
+            rhs: Expr {
+                kind: ExprKind::Variable { name: "y".into() },
+            }
+            .into(),
+        },
+    };
+
+    assert!(generator.codegen_function(&prototype, &body).is_some());
+
+    let callee = "Juwan";
+    let args = [
+        Expr {
+            kind: ExprKind::Number(67.0),
+        },
+        Expr {
+            kind: ExprKind::Number(67.0),
+        },
+    ];
+    let result = generator.codegen_call(callee, &args);
+    result.map(|fv| fv.print_to_stderr());
+    let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
+    let expected = "%call_tmp = call double @Juwan(double 6.700000e+01, double 6.700000e+01)";
     assert_eq!(result_as_string.trim(), expected);
 }
 

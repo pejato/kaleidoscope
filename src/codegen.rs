@@ -99,7 +99,7 @@ impl<'ctx> CodeGen<'ctx> {
             compiled_args.into_iter().map(|val| val.into()).collect();
 
         self.builder
-            .build_call(callee_fn, compiled_args.as_slice(), callee)
+            .build_call(callee_fn, compiled_args.as_slice(), "call_tmp")
             .try_as_basic_value()
             .left()
             .map(|val| val.into_float_value())
