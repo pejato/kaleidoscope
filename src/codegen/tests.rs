@@ -134,7 +134,6 @@ fn test_codegen_bin_unknown() {
     assert_eq!(result, None);
 }
 
-// TODO: We'll want to have a test for calling fn defined using proto codegen & func codegen
 #[test]
 fn test_codegen_call_with_gened_prototype() {
     let context = Context::create();
