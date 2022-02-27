@@ -158,7 +158,6 @@ fn test_codegen_call() {
     let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
     let expected =
         "%flint = call addrspace(0) double @flint(double 6.700000e+01, double 6.700000e+01)";
-    // result.print_to_stderr();
     assert_eq!(result_as_string.trim(), expected);
 }
 
