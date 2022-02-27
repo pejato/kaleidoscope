@@ -61,6 +61,11 @@ impl Drive for Driver {
             writeln!(self.output, "Parsed a function definition")?;
             self.output.flush()?;
         } else {
+            writeln!(
+                self.output,
+                "Failed to parse function definition, continuing..."
+            )?;
+            self.output.flush()?;
             self.lexer.get_next_token();
         }
         Ok(())
@@ -71,6 +76,8 @@ impl Drive for Driver {
             writeln!(self.output, "Parsed an extern")?;
             self.output.flush()?;
         } else {
+            writeln!(self.output, "Failed to parse extern, continuing...")?;
+            self.output.flush()?;
             self.lexer.get_next_token();
         }
         Ok(())
@@ -85,6 +92,11 @@ impl Drive for Driver {
             writeln!(self.output, "Parsed a top level expression")?;
             self.output.flush()?;
         } else {
+            writeln!(
+                self.output,
+                "Failed to parse top level definition, continuing..."
+            )?;
+            self.output.flush()?;
             self.lexer.get_next_token();
         }
         Ok(())
