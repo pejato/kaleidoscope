@@ -134,20 +134,32 @@ fn test_codegen_bin_unknown() {
     assert_eq!(result, None);
 }
 
+// TODO: We'll want to have a test for calling fn defined using proto codegen & func codegen
 #[test]
 fn test_codegen_call() {
     let context = Context::create();
     let mut generator = make_generator(&context);
 
-    let lhs = Expr {
-        kind: ExprKind::Number(41.0),
-    };
-    let rhs = Expr {
-        kind: ExprKind::Number(41.0),
-    };
+    assert!(generator
+        .codegen_prototype(&["x".into(), "y".into()], "flint")
+        .is_some());
 
-    let result = generator.codegen_binary('#', &lhs, &rhs);
-    assert_eq!(result, None);
+    let callee = "flint";
+    let args = [
+        Expr {
+            kind: ExprKind::Number(67.0),
+        },
+        Expr {
+            kind: ExprKind::Number(67.0),
+        },
+    ];
+    let result = generator.codegen_call(callee, &args);
+
+    let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
+    let expected =
+        "%flint = call addrspace(0) double @flint(double 6.700000e+01, double 6.700000e+01)";
+    // result.print_to_stderr();
+    assert_eq!(result_as_string.trim(), expected);
 }
 
 #[test]
