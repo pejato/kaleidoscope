@@ -107,13 +107,34 @@ where
     }
 
     fn handle_extern(&mut self) -> Result<(), std::io::Error> {
-        if self.parser.parse_extern(&mut self.lexer).is_some() {
-            writeln!(self.output, "Parsed an extern")?;
-            self.output.flush()?;
-        } else {
-            writeln!(self.output, "Failed to parse extern, continuing...")?;
-            self.output.flush()?;
-            self.lexer.get_next_token();
+        match self.parser.parse_extern(&mut self.lexer) {
+            Some(expr) => {
+                writeln!(self.output, "Parsed an extern")?;
+                self.output.flush()?;
+
+                match expr.kind {
+                    ExprKind::Prototype { name, args } => {
+                        let result = self
+                            .codegen
+                            .codegen_prototype(&args, &name)
+                            .map_or("Failed to codegen extern, continuing...".into(), |ir| {
+                                ir.print_to_string().to_string()
+                            });
+                        writeln!(self.output, "{}", result)?;
+                        self.output.flush()?;
+                    }
+                    _ => {
+                        writeln!(self.output, "Failed to codegen extern, continuing...")?;
+                        self.output.flush()?;
+                        self.lexer.get_next_token();
+                    }
+                }
+            }
+            None => {
+                writeln!(self.output, "Failed to parse extern, continuing...")?;
+                self.output.flush()?;
+                self.lexer.get_next_token();
+            }
         }
         Ok(())
     }
@@ -136,4 +157,8 @@ where
         }
         Ok(())
     }
+}
+
+impl Driver<'_> {
+    fn handle_function_codegen() {}
 }
