@@ -1,7 +1,7 @@
 use inkwell::{context::Context, values::AnyValue};
 
 use crate::{
-    ast::ExprKind,
+    ast::{Expr, ExprKind},
     codegen::CodeGen,
     lexer::{Lex, Lexer, Token},
     parser::{Parse, Parser},
@@ -76,23 +76,7 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed a function definition")?;
                 self.output.flush()?;
-
-                match expr.kind {
-                    ExprKind::Function { prototype, body } => {
-                        let result = self
-                            .codegen
-                            .codegen_function(&prototype, &body)
-                            .map_or("Failed to codegen function, continuing...".into(), |ir| {
-                                ir.print_to_string().to_string()
-                            });
-                        writeln!(self.output, "{}", result)?;
-                        self.output.flush()?;
-                    }
-                    _ => {
-                        writeln!(self.output, "Failed to codegen function, continuing...")?;
-                        self.output.flush()?;
-                    }
-                }
+                self.handle_function_codegen(&expr)?;
             }
             None => {
                 writeln!(
@@ -111,24 +95,7 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed an extern")?;
                 self.output.flush()?;
-
-                match expr.kind {
-                    ExprKind::Prototype { name, args } => {
-                        let result = self
-                            .codegen
-                            .codegen_prototype(&args, &name)
-                            .map_or("Failed to codegen extern, continuing...".into(), |ir| {
-                                ir.print_to_string().to_string()
-                            });
-                        writeln!(self.output, "{}", result)?;
-                        self.output.flush()?;
-                    }
-                    _ => {
-                        writeln!(self.output, "Failed to codegen extern, continuing...")?;
-                        self.output.flush()?;
-                        self.lexer.get_next_token();
-                    }
-                }
+                self.handle_prototype_codegen(&expr)?;
             }
             None => {
                 writeln!(self.output, "Failed to parse extern, continuing...")?;
@@ -140,25 +107,64 @@ where
     }
 
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error> {
-        if self
-            .parser
-            .parse_top_level_expression(&mut self.lexer)
-            .is_some()
-        {
-            writeln!(self.output, "Parsed a top level expression")?;
-            self.output.flush()?;
-        } else {
-            writeln!(
-                self.output,
-                "Failed to parse top level definition, continuing..."
-            )?;
-            self.output.flush()?;
-            self.lexer.get_next_token();
+        match self.parser.parse_top_level_expression(&mut self.lexer) {
+            Some(expr) => {
+                writeln!(self.output, "Parsed a top level expression")?;
+                self.output.flush()?;
+                self.handle_function_codegen(&expr)?;
+            }
+            None => {
+                writeln!(
+                    self.output,
+                    "Failed to parse top level definition, continuing..."
+                )?;
+                self.output.flush()?;
+                self.lexer.get_next_token();
+            }
         }
         Ok(())
     }
 }
 
 impl Driver<'_> {
-    fn handle_function_codegen() {}
+    fn handle_function_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
+        match &expr.kind {
+            ExprKind::Function { prototype, body } => {
+                let result = self
+                    .codegen
+                    .codegen_function(&prototype, &body)
+                    .map_or("Failed to codegen function, continuing...".into(), |ir| {
+                        ir.print_to_string().to_string()
+                    });
+                writeln!(self.output, "{}", result)?;
+                self.output.flush()?;
+            }
+            _ => {
+                writeln!(self.output, "Failed to codegen function, continuing...")?;
+                self.output.flush()?;
+            }
+        }
+        Ok(())
+    }
+
+    fn handle_prototype_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
+        match &expr.kind {
+            ExprKind::Prototype { name, args } => {
+                let result = self
+                    .codegen
+                    .codegen_prototype(&args, &name)
+                    .map_or("Failed to codegen extern, continuing...".into(), |ir| {
+                        ir.print_to_string().to_string()
+                    });
+                writeln!(self.output, "{}", result)?;
+                self.output.flush()?;
+            }
+            _ => {
+                writeln!(self.output, "Failed to codegen extern, continuing...")?;
+                self.output.flush()?;
+                self.lexer.get_next_token();
+            }
+        }
+        Ok(())
+    }
 }
