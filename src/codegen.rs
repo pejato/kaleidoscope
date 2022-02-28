@@ -5,13 +5,14 @@ use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::{Linkage, Module};
-use inkwell::passes::PassManager;
+use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue,
     FunctionValue,
 };
 use inkwell::FloatPredicate;
+use inkwell::OptimizationLevel::Aggressive;
 
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
@@ -23,7 +24,18 @@ pub struct CodeGen<'ctx> {
 
 impl<'ctx> CodeGen<'ctx> {
     pub fn new(context: &'ctx Context, builder: Builder<'ctx>, module: Module<'ctx>) -> Self {
+        let function_pass_manager_builder = PassManagerBuilder::create();
+        function_pass_manager_builder.set_optimization_level(Aggressive);
+
         let function_pass_manager = PassManager::create(&module);
+        // TODO: Look through the passes available to us.. there are a lot!
+        function_pass_manager_builder.populate_function_pass_manager(&function_pass_manager);
+        function_pass_manager.add_aggressive_inst_combiner_pass();
+        function_pass_manager.add_reassociate_pass();
+        function_pass_manager.add_new_gvn_pass();
+        function_pass_manager.add_cfg_simplification_pass();
+
+        function_pass_manager.initialize();
 
         CodeGen {
             builder,
