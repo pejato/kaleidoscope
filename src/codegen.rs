@@ -120,7 +120,7 @@ impl<'ctx> CodeGen<'ctx> {
             .module
             .add_function(name, fn_type, Linkage::External.into());
 
-        for (param, arg) in the_fn.get_param_iter().zip(args.into_iter()) {
+        for (param, arg) in the_fn.get_param_iter().zip(args.iter()) {
             param.set_name(arg);
         }
 

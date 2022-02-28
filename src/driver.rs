@@ -132,7 +132,7 @@ impl Driver<'_> {
             ExprKind::Function { prototype, body } => {
                 let result = self
                     .codegen
-                    .codegen_function(&prototype, &body)
+                    .codegen_function(prototype, body)
                     .map_or("Failed to codegen function, continuing...".into(), |ir| {
                         ir.print_to_string().to_string()
                     });
@@ -152,7 +152,7 @@ impl Driver<'_> {
             ExprKind::Prototype { name, args } => {
                 let result = self
                     .codegen
-                    .codegen_prototype(&args, &name)
+                    .codegen_prototype(args, name)
                     .map_or("Failed to codegen extern, continuing...".into(), |ir| {
                         ir.print_to_string().to_string()
                     });
