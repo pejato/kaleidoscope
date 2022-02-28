@@ -190,6 +190,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.builder.build_return(Some(&value));
 
                 if the_fn.verify(true) {
+                    self.function_pass_manager.run_on(&the_fn);
                     Some(the_fn)
                 } else {
                     unsafe { the_fn.delete() };
