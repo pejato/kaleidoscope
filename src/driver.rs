@@ -1,29 +1,48 @@
+use inkwell::{context::Context, values::AnyValue};
+
 use crate::{
+    ast::ExprKind,
+    codegen::CodeGen,
     lexer::{Lex, Lexer, Token},
     parser::{Parse, Parser},
 };
 
-use std::io::{Read, Write};
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+};
 
-pub trait Drive {
-    fn new(input: Box<dyn Read>, output: Box<dyn Write>) -> Self;
+pub trait Drive<'ctx> {
+    fn new(input: Box<dyn Read>, output: Box<dyn Write>, context: &'ctx Context) -> Self;
     fn run(&mut self) -> Result<(), std::io::Error>;
     fn handle_function_definition(&mut self) -> Result<(), std::io::Error>;
     fn handle_extern(&mut self) -> Result<(), std::io::Error>;
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error>;
 }
 
-pub struct Driver {
+pub struct Driver<'a> {
     parser: Parser,
     lexer: Lexer<Box<dyn Read>>,
+    codegen: CodeGen<'a>,
     output: Box<dyn Write>,
 }
 
-impl Drive for Driver {
-    fn new(input: Box<dyn Read>, output: Box<dyn Write>) -> Self {
+impl<'ctx, 'a> Drive<'ctx> for Driver<'a>
+where
+    'ctx: 'a,
+{
+    fn new(input: Box<dyn Read>, output: Box<dyn Write>, context: &'ctx Context) -> Self {
+        let builder = context.create_builder();
+        let module = context.create_module("Kaleidoscope");
         Driver {
             parser: Parser::new(),
             lexer: Lexer::new(input),
+            codegen: CodeGen {
+                builder,
+                context,
+                module,
+                named_values: HashMap::new(),
+            },
             output,
         }
     }
@@ -53,20 +72,36 @@ impl Drive for Driver {
         }
     }
     fn handle_function_definition(&mut self) -> Result<(), std::io::Error> {
-        if self
-            .parser
-            .parse_function_definition(&mut self.lexer)
-            .is_some()
-        {
-            writeln!(self.output, "Parsed a function definition")?;
-            self.output.flush()?;
-        } else {
-            writeln!(
-                self.output,
-                "Failed to parse function definition, continuing..."
-            )?;
-            self.output.flush()?;
-            self.lexer.get_next_token();
+        match self.parser.parse_function_definition(&mut self.lexer) {
+            Some(expr) => {
+                writeln!(self.output, "Parsed a function definition")?;
+                self.output.flush()?;
+
+                match expr.kind {
+                    ExprKind::Function { prototype, body } => {
+                        let result = self
+                            .codegen
+                            .codegen_function(&prototype, &body)
+                            .map_or("Failed to codegen function, continuing...".into(), |ir| {
+                                ir.print_to_string().to_string()
+                            });
+                        writeln!(self.output, "{}", result)?;
+                        self.output.flush()?;
+                    }
+                    _ => {
+                        writeln!(self.output, "Failed to codegen function, continuing...")?;
+                        self.output.flush()?;
+                    }
+                }
+            }
+            None => {
+                writeln!(
+                    self.output,
+                    "Failed to parse function definition, continuing..."
+                )?;
+                self.output.flush()?;
+                self.lexer.get_next_token();
+            }
         }
         Ok(())
     }

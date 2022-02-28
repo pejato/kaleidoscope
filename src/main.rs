@@ -1,4 +1,5 @@
 use driver::{Drive, Driver};
+use inkwell::context::Context;
 use std::io::{stdin, stdout};
 
 pub mod ast;
@@ -10,7 +11,8 @@ pub mod parser;
 mod test_utilities;
 
 fn main() -> Result<(), std::io::Error> {
-    let mut driver = Driver::new(Box::new(stdin()), Box::new(stdout()));
+    let context = Context::create();
+    let mut driver = Driver::new(Box::new(stdin()), Box::new(stdout()), &context);
     driver.run()?;
 
     Ok(())

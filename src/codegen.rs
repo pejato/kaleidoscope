@@ -20,7 +20,7 @@ pub struct CodeGen<'ctx> {
 }
 
 impl<'ctx> CodeGen<'ctx> {
-    fn codegen(&mut self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
+    pub fn codegen(&mut self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
         match &expr.kind {
             ExprKind::Number(num) => self.codegen_number(*num).as_any_value_enum().into(),
 
@@ -48,15 +48,15 @@ impl<'ctx> CodeGen<'ctx> {
 }
 
 impl<'ctx> CodeGen<'ctx> {
-    fn codegen_number(&self, num: f64) -> FloatValue<'ctx> {
+    pub fn codegen_number(&self, num: f64) -> FloatValue<'ctx> {
         self.context.f64_type().const_float(num)
     }
 
-    fn codegen_variable(&self, name: &str) -> Option<AnyValueEnum<'ctx>> {
+    pub fn codegen_variable(&self, name: &str) -> Option<AnyValueEnum<'ctx>> {
         self.named_values.get(name).cloned()
     }
 
-    fn codegen_binary(&mut self, op: char, lhs: &Expr, rhs: &Expr) -> Option<FloatValue<'ctx>> {
+    pub fn codegen_binary(&mut self, op: char, lhs: &Expr, rhs: &Expr) -> Option<FloatValue<'ctx>> {
         let lhs: FloatValue = self.codegen(lhs)?.try_into().ok()?;
         let rhs: FloatValue = self.codegen(rhs)?.try_into().ok()?;
 
@@ -81,7 +81,7 @@ impl<'ctx> CodeGen<'ctx> {
         }
     }
 
-    fn codegen_call(&mut self, callee: &str, args: &[Expr]) -> Option<FloatValue<'ctx>> {
+    pub fn codegen_call(&mut self, callee: &str, args: &[Expr]) -> Option<FloatValue<'ctx>> {
         let callee_fn = self.module.get_function(callee)?;
 
         let callee_params = callee_fn.get_params();
@@ -105,7 +105,7 @@ impl<'ctx> CodeGen<'ctx> {
             .map(|val| val.into_float_value())
     }
 
-    fn codegen_prototype(&self, args: &[String], name: &str) -> Option<FunctionValue<'ctx>> {
+    pub fn codegen_prototype(&self, args: &[String], name: &str) -> Option<FunctionValue<'ctx>> {
         let param_types: Vec<BasicMetadataTypeEnum> = args
             .iter()
             .map(|_| self.context.f64_type().into())
@@ -127,7 +127,11 @@ impl<'ctx> CodeGen<'ctx> {
         Some(the_fn)
     }
 
-    fn codegen_function(&mut self, prototype: &Expr, body: &Expr) -> Option<FunctionValue<'ctx>> {
+    pub fn codegen_function(
+        &mut self,
+        prototype: &Expr,
+        body: &Expr,
+    ) -> Option<FunctionValue<'ctx>> {
         let (fn_name, args) = match &prototype.kind {
             ExprKind::Prototype { name, args } => Some((name, args)),
             _ => None,
