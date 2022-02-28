@@ -6,7 +6,7 @@ Tentative roadmap / progress list:
 
 - [x] [Lexer](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl01.html)
 - [x] [Parsing and AST](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl02.html)
-- [ ] [Code Generation](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl03.html)
+- [x] [Code Generation](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl03.html)
 - [ ] [Optimization and JIT Compilation](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl04.html)
 - [ ] [Control Flow](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl05.html)
 - [ ] [User Defined Operations](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/LangImpl06.html)
