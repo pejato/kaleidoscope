@@ -7,12 +7,7 @@ use pretty_assertions::assert_eq;
 fn make_generator(context: &Context) -> CodeGen {
     let module = context.create_module("Test");
     let builder = context.create_builder();
-    CodeGen {
-        context: context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    }
+    CodeGen::new(context, builder, module)
 }
 
 #[test]
@@ -197,7 +192,9 @@ fn test_codegen_call_with_gened_function() {
         },
     ];
     let result = generator.codegen_call(callee, &args);
-    if let Some(fv) = result { fv.print_to_stderr() }
+    if let Some(fv) = result {
+        fv.print_to_stderr()
+    }
     let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
     let expected = "%call_tmp = call double @Juwan(double 6.700000e+01, double 6.700000e+01)";
     assert_eq!(result_as_string.trim(), expected);

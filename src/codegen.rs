@@ -5,6 +5,7 @@ use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::{Linkage, Module};
+use inkwell::passes::PassManager;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue,
@@ -16,10 +17,23 @@ pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
+    pub function_pass_manager: PassManager<FunctionValue<'ctx>>,
     pub named_values: HashMap<String, AnyValueEnum<'ctx>>,
 }
 
 impl<'ctx> CodeGen<'ctx> {
+    pub fn new(context: &'ctx Context, builder: Builder<'ctx>, module: Module<'ctx>) -> Self {
+        let function_pass_manager = PassManager::create(&module);
+
+        CodeGen {
+            builder,
+            context,
+            module,
+            function_pass_manager,
+            named_values: HashMap::new(),
+        }
+    }
+
     pub fn codegen(&mut self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
         match &expr.kind {
             ExprKind::Number(num) => self.codegen_number(*num).as_any_value_enum().into(),
