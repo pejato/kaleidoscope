@@ -14,6 +14,6 @@ fn main() -> Result<(), std::io::Error> {
     let context = Context::create();
     let mut driver = Driver::new(Box::new(stdin()), Box::new(stdout()), &context);
     driver.run()?;
-
+    driver.dump_ir()?;
     Ok(())
 }

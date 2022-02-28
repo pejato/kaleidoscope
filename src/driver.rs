@@ -167,4 +167,14 @@ impl Driver<'_> {
         }
         Ok(())
     }
+
+    pub fn dump_ir(&mut self) -> Result<(), std::io::Error> {
+        let llvm_string = self.codegen.module.print_to_string();
+        let as_str = llvm_string
+            .to_str()
+            .ok()
+            .map_or("Failed to dump Module IR", |s| s);
+        writeln!(self.output, "{}", as_str)?;
+        Ok(())
+    }
 }

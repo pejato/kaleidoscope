@@ -229,6 +229,7 @@ impl Parse for Parser {
                 // Reached the end of the arguments, keep this in the lexer's
                 // buffer for the match following this loop
                 Some(Token::Misc(')')) => (),
+                // TODO: The tutorial doesn't require (or allow?) commas between parameters, should change this here.
                 // Another argument may follow (we allow trailing commas)
                 Some(Token::Misc(',')) => lexer.get_next_token(),
                 _ => {
