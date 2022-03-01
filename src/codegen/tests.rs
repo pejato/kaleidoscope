@@ -193,9 +193,6 @@ fn test_codegen_call_with_gened_function() {
         },
     ];
     let result = generator.codegen_call(callee, &args);
-    if let Some(fv) = result {
-        fv.print_to_stderr()
-    }
     let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
     let expected = "%call_tmp = call double @Juwan(double 6.700000e+01, double 6.700000e+01)";
     assert_eq!(result_as_string.trim(), expected);
