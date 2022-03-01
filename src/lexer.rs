@@ -11,6 +11,9 @@ pub enum Token {
     Extern,
     Identifier(String),
     Number(f64),
+    If,
+    Then,
+    Else,
     Misc(char),
 }
 
@@ -205,6 +208,9 @@ where
         match ident.as_str() {
             "def" => Token::Def,
             "extern" => Token::Extern,
+            "if" => Token::If,
+            "then" => Token::Then,
+            "else" => Token::Else,
             _ => Token::Identifier(ident),
         }
         .into()
