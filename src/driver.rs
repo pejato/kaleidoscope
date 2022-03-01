@@ -4,6 +4,7 @@ use crate::{
     ast::{Expr, ExprKind},
     codegen::CodeGen,
     lexer::{Lex, Lexer, Token},
+    option_ext::OptionExt,
     parser::{Parse, Parser},
 };
 
@@ -54,7 +55,7 @@ where
 
             match self.lexer.current_token() {
                 Some(Token::EOF) | None => return Ok(()),
-                Some(Token::Misc(';')) => self.lexer.get_next_token(),
+                Some(Token::Misc(';')) => self.lexer.get_next_token().discard(),
                 Some(Token::Def) => self.handle_function_definition()?,
                 Some(Token::Extern) => self.handle_extern()?,
                 _ => self.handle_top_level_expression()?,
@@ -76,7 +77,7 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed a function definition")?;
                 self.output.flush()?;
-                self.handle_function_codegen(&expr)?;
+                Ok(self.handle_function_codegen(&expr)?)
             }
             None => {
                 writeln!(
@@ -84,10 +85,9 @@ where
                     "Failed to parse function definition, continuing..."
                 )?;
                 self.output.flush()?;
-                self.lexer.get_next_token();
+                Ok(self.lexer.get_next_token().discard())
             }
         }
-        Ok(())
     }
 
     fn handle_extern(&mut self) -> Result<(), std::io::Error> {
@@ -95,15 +95,14 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed an extern")?;
                 self.output.flush()?;
-                self.handle_prototype_codegen(&expr)?;
+                Ok(self.handle_prototype_codegen(&expr)?)
             }
             None => {
                 writeln!(self.output, "Failed to parse extern, continuing...")?;
                 self.output.flush()?;
-                self.lexer.get_next_token();
+                Ok(self.lexer.get_next_token().discard())
             }
         }
-        Ok(())
     }
 
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error> {
@@ -111,7 +110,7 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed a top level expression")?;
                 self.output.flush()?;
-                self.handle_function_codegen(&expr)?;
+                Ok(self.handle_function_codegen(&expr)?)
             }
             None => {
                 writeln!(
@@ -119,10 +118,9 @@ where
                     "Failed to parse top level definition, continuing..."
                 )?;
                 self.output.flush()?;
-                self.lexer.get_next_token();
+                Ok(self.lexer.get_next_token().discard())
             }
         }
-        Ok(())
     }
 }
 

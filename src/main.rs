@@ -1,3 +1,5 @@
+#![feature(generic_associated_types)]
+
 use driver::{Drive, Driver};
 use inkwell::context::Context;
 use std::io::{stdin, stdout};
@@ -7,6 +9,7 @@ pub mod codegen;
 pub mod driver;
 pub mod environment;
 pub mod lexer;
+pub mod option_ext;
 pub mod parser;
 mod test_utilities;
 

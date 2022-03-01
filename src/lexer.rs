@@ -21,7 +21,7 @@ pub trait Lex {
     type Reader: Read;
 
     fn new(reader: Self::Reader) -> Self;
-    fn get_next_token(&mut self);
+    fn get_next_token(&mut self) -> &Option<Token>;
     fn current_token(&self) -> &Option<Token>;
 }
 
@@ -52,8 +52,9 @@ where
         }
     }
 
-    fn get_next_token(&mut self) {
+    fn get_next_token(&mut self) -> &Option<Token> {
         self.buffer = self.get_token();
+        &self.buffer
     }
 
     fn current_token(&self) -> &Option<Token> {

@@ -25,4 +25,12 @@ pub enum ExprKind {
         prototype: Box<Expr>,
         body: Box<Expr>,
     },
+    If(IfVal),
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
+pub struct IfVal {
+    if_boolish_test: Box<Expr>,
+    then: Box<Expr>,
+    elves: Box<Expr>,
 }

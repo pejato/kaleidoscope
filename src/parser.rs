@@ -2,6 +2,7 @@ use crate::{
     ast::{Expr, ExprKind},
     environment::Environment,
     lexer::{Lex, Token},
+    option_ext::OptionExt,
 };
 
 pub trait Parse {
@@ -13,6 +14,7 @@ pub trait Parse {
         identifier: String,
         lexer: &mut L,
     ) -> Option<Expr>;
+    fn parse_if_then_else<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
     fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
     fn parse_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
     fn parse_binary_op_rhs<L: Lex>(
@@ -125,6 +127,12 @@ impl Parse for Parser {
         Expr { kind }.into()
     }
 
+    fn parse_if_then_else<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
+        let _next_token = lexer.get_next_token();
+
+        None
+    }
+
     fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         match lexer.current_token() {
             Some(Token::Identifier(ident)) => {
@@ -132,6 +140,7 @@ impl Parse for Parser {
             }
             Some(Token::Number(_)) => self.parse_number_expr(lexer).into(),
             Some(Token::Misc('(')) => self.parse_paren_expr(lexer),
+            Some(Token::If) => self.parse_if_then_else(lexer),
             _ => self.log_error("unknown token when expecting an expression".into()),
         }
     }
@@ -186,7 +195,6 @@ impl Parse for Parser {
             };
         }
     }
-
     fn parse_function_prototype<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let func_name: Option<String> = match lexer.current_token() {
             Some(Token::Identifier(i)) => Some(i.clone()),
@@ -231,7 +239,7 @@ impl Parse for Parser {
                 Some(Token::Misc(')')) => (),
                 // TODO: The tutorial doesn't require (or allow?) commas between parameters, should change this here.
                 // Another argument may follow (we allow trailing commas)
-                Some(Token::Misc(',')) => lexer.get_next_token(),
+                Some(Token::Misc(',')) => lexer.get_next_token().discard(),
                 _ => {
                     return self.log_error(format!(
                         "Expected ',' or ')' in prototype,\n  got {:#?}",
