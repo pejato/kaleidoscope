@@ -30,7 +30,7 @@ pub enum ExprKind {
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct IfVal {
-    if_boolish_test: Box<Expr>,
-    then: Box<Expr>,
-    elves: Box<Expr>,
+    pub(crate) if_boolish_test: Box<Expr>,
+    pub(crate) then: Box<Expr>,
+    pub(crate) elves: Box<Expr>,
 }

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expr, ExprKind},
+    ast::{Expr, ExprKind, IfVal},
     environment::Environment,
     lexer::{Lex, Token},
     option_ext::OptionExt,
@@ -128,9 +128,33 @@ impl Parse for Parser {
     }
 
     fn parse_if_then_else<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
-        let _next_token = lexer.get_next_token();
+        let maybe_test_expr = self.parse_expression(lexer)?;
 
-        None
+        // We've loaded if <expr> at this point
+        match lexer.get_next_token() {
+            Some(Token::Then) => (),
+            _ => return None,
+        }
+
+        let maybe_then_expr = self.parse_expression(lexer)?;
+
+        // Now we've loaded if <expr> then <expr>
+        match lexer.get_next_token() {
+            Some(Token::Else) => (),
+            _ => return None,
+        }
+
+        // Parse the last <expr>
+        let maybe_else_expr = self.parse_expression(lexer)?;
+
+        Expr {
+            kind: ExprKind::If(IfVal {
+                if_boolish_test: maybe_test_expr.into(),
+                then: maybe_then_expr.into(),
+                elves: maybe_else_expr.into(),
+            }),
+        }
+        .into()
     }
 
     fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
