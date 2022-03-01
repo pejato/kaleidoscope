@@ -10,10 +10,13 @@ use inkwell::values::{
 };
 use inkwell::FloatPredicate;
 
+use crate::ast::IfVal;
+
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
+    pub current_function: Option<FunctionValue<'ctx>>,
     pub named_values: HashMap<String, AnyValueEnum<'ctx>>,
 }
 
@@ -181,8 +184,11 @@ impl<'ctx> CodeGen<'ctx> {
                 .insert(param_name, param.as_any_value_enum());
         }
 
+        self.current_function = Some(the_fn);
+
         match self.codegen(body) {
             Some(value) => {
+                self.current_function = None;
                 let value: BasicValueEnum = value.try_into().ok()?;
                 self.builder.build_return(Some(&value));
 
@@ -194,14 +200,69 @@ impl<'ctx> CodeGen<'ctx> {
                 }
             }
             None => {
+                self.current_function = None;
                 unsafe { the_fn.delete() };
                 None
             }
         }
     }
 
-    pub fn codegen_if(&mut self, _if_val: &crate::ast::IfVal) -> Option<AnyValueEnum<'ctx>> {
-        todo!()
+    pub fn codegen_if(&mut self, if_val: &IfVal) -> Option<AnyValueEnum<'ctx>> {
+        let cond_ir = self.codegen(&if_val.if_boolish_test)?;
+
+        if !cond_ir.get_type().is_float_type() {
+            return None;
+        }
+        let cond_ir = cond_ir.into_float_value();
+
+        let current_function = &self.current_function?;
+
+        let then_block = self.context.append_basic_block(*current_function, "then");
+        let else_block = self.context.append_basic_block(*current_function, "else");
+        let continuation_block = self.context.append_basic_block(*current_function, "cont");
+
+        // i1 that is true if not equal to zero, and false if it is
+        let comparison = self.builder.build_float_compare(
+            FloatPredicate::ONE,
+            cond_ir,
+            self.context.f64_type().const_float_from_string("0.0"),
+            "comp",
+        );
+
+        // Conditionally branch to then and else
+        self.builder
+            .build_conditional_branch(comparison, then_block, else_block);
+
+        // Codegen `then` and br to continuation block
+        self.builder.position_at_end(then_block);
+
+        let then_ir = self.codegen(&if_val.then)?;
+        if !then_ir.get_type().is_float_type() {
+            return None;
+        }
+
+        self.builder.position_at_end(then_block);
+        self.builder.build_unconditional_branch(continuation_block);
+        let then_block = self.builder.get_insert_block()?;
+
+        // Codegen `else` br to continuation block
+        self.builder.position_at_end(else_block);
+        let else_ir = self.codegen(&if_val.elves)?;
+        if !else_ir.get_type().is_float_type() {
+            return None;
+        }
+        self.builder.position_at_end(else_block);
+        self.builder.build_unconditional_branch(continuation_block);
+
+        // Setting up the phi node
+        self.builder.position_at_end(continuation_block);
+        let phi = self.builder.build_phi(self.context.f64_type(), "iftmp");
+
+        let then_ir: BasicValueEnum = then_ir.try_into().ok()?;
+        let else_ir: BasicValueEnum = else_ir.try_into().ok()?;
+        phi.add_incoming(&[(&then_ir, then_block), (&else_ir, else_block)]);
+
+        Some(phi.as_any_value_enum())
     }
 }
 

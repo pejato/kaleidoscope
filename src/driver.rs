@@ -42,6 +42,7 @@ where
                 builder,
                 context,
                 module,
+                current_function: None,
                 named_values: HashMap::new(),
             },
             output,
