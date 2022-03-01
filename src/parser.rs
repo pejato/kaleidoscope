@@ -128,23 +128,26 @@ impl Parse for Parser {
     }
 
     fn parse_if_then_else<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
+        lexer.get_next_token().discard();
         let maybe_test_expr = self.parse_expression(lexer)?;
 
         // We've loaded if <expr> at this point
-        match lexer.get_next_token() {
+        match lexer.current_token() {
             Some(Token::Then) => (),
             _ => return None,
         }
 
+        lexer.get_next_token().discard();
         let maybe_then_expr = self.parse_expression(lexer)?;
 
         // Now we've loaded if <expr> then <expr>
-        match lexer.get_next_token() {
+        match lexer.current_token() {
             Some(Token::Else) => (),
             _ => return None,
         }
 
         // Parse the last <expr>
+        lexer.get_next_token().discard();
         let maybe_else_expr = self.parse_expression(lexer)?;
 
         Expr {
