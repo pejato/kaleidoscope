@@ -14,6 +14,7 @@ fn make_generator(context: &Context) -> CodeGen {
         builder,
         module,
         named_values: HashMap::new(),
+        current_function: None,
     }
 }
 
