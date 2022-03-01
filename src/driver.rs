@@ -85,7 +85,8 @@ where
                     "Failed to parse function definition, continuing..."
                 )?;
                 self.output.flush()?;
-                Ok(self.lexer.get_next_token().discard())
+                self.lexer.get_next_token().discard();
+                Ok(())
             }
         }
     }
@@ -100,7 +101,8 @@ where
             None => {
                 writeln!(self.output, "Failed to parse extern, continuing...")?;
                 self.output.flush()?;
-                Ok(self.lexer.get_next_token().discard())
+                self.lexer.get_next_token().discard();
+                Ok(())
             }
         }
     }
@@ -118,7 +120,8 @@ where
                     "Failed to parse top level definition, continuing..."
                 )?;
                 self.output.flush()?;
-                Ok(self.lexer.get_next_token().discard())
+                self.lexer.get_next_token().discard();
+                Ok(())
             }
         }
     }

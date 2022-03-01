@@ -10,7 +10,7 @@ fn make_generator(context: &Context) -> CodeGen {
     let module = context.create_module("Test");
     let builder = context.create_builder();
     CodeGen {
-        context: context,
+        context,
         builder,
         module,
         named_values: HashMap::new(),
