@@ -1,18 +1,14 @@
 use std::ffi::CString;
 
 use super::*;
+use crate::ast::ExprKind::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 
 fn make_generator(context: &Context) -> CodeGen {
     let module = context.create_module("Test");
     let builder = context.create_builder();
-    CodeGen {
-        context: context,
-        builder,
-        module,
-        named_values: HashMap::new(),
-    }
+    CodeGen::new(context, builder, module)
 }
 
 #[test]
@@ -197,7 +193,6 @@ fn test_codegen_call_with_gened_function() {
         },
     ];
     let result = generator.codegen_call(callee, &args);
-    if let Some(fv) = result { fv.print_to_stderr() }
     let result_as_string = result.map(|r| r.print_to_string().to_string()).unwrap();
     let expected = "%call_tmp = call double @Juwan(double 6.700000e+01, double 6.700000e+01)";
     assert_eq!(result_as_string.trim(), expected);
@@ -367,14 +362,92 @@ fn test_codegen_function_two_calls() {
     // We set the name of call's to call_tmp. This test specifically tests that
     // later calls don't clobber earlier call_tmp's
     let expected = indoc! {"
-    define double @JuwanHoward(double %x, double %y) {
-    entry:
-      %call_tmp = call double @Juwan(double %x)
-      %call_tmp1 = call double @Howard(double %y)
-      %addtmp = fadd double %call_tmp, %call_tmp1
-      ret double %addtmp
-    }
+        define double @JuwanHoward(double %x, double %y) {
+        entry:
+          %call_tmp = call double @Juwan(double %x)
+          %call_tmp1 = call double @Howard(double %y)
+          %addtmp = fadd double %call_tmp, %call_tmp1
+          ret double %addtmp
+        }
     "};
 
     assert_eq!(result.print_to_string().to_string(), expected);
+}
+
+#[test]
+fn test_simple_codegen_reassociation_and_cse() {
+    let context = Context::create();
+    let mut generator = make_generator(&context);
+
+    let prototype = Expr {
+        kind: ExprKind::Prototype {
+            name: "test".into(),
+            args: vec!["x".into()],
+        },
+    }
+    .into();
+
+    let body = Expr {
+        kind: Binary {
+            operator: '*',
+            lhs: Expr {
+                kind: Binary {
+                    operator: '+',
+                    lhs: Expr {
+                        kind: Binary {
+                            operator: '+',
+                            lhs: Expr { kind: Number(1.0) }.into(),
+                            rhs: Expr { kind: Number(2.0) }.into(),
+                        },
+                    }
+                    .into(),
+                    rhs: Expr {
+                        kind: Variable { name: "x".into() },
+                    }
+                    .into(),
+                },
+            }
+            .into(),
+            rhs: Expr {
+                kind: Binary {
+                    operator: '+',
+                    lhs: Expr {
+                        kind: Variable { name: "x".into() },
+                    }
+                    .into(),
+                    rhs: Expr {
+                        kind: Binary {
+                            operator: '+',
+                            lhs: Expr { kind: Number(1.0) }.into(),
+                            rhs: Expr { kind: Number(2.0) }.into(),
+                        },
+                    }
+                    .into(),
+                },
+            }
+            .into(),
+        },
+    }
+    .into();
+
+    let function = Expr {
+        kind: Function { prototype, body },
+    };
+
+    let result = generator
+        .codegen(&function)
+        .unwrap()
+        .print_to_string()
+        .to_string();
+    let expected = indoc! {"
+        define double @test(double %x) {
+        entry:
+          %addtmp = fadd double %x, 3.000000e+00
+          %multmp = fmul double %addtmp, %addtmp
+          ret double %multmp
+        }
+    "
+    };
+
+    assert_eq!(result, expected);
 }

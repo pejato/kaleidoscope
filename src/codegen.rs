@@ -5,21 +5,47 @@ use crate::ast::{Expr, ExprKind};
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::{Linkage, Module};
+use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue,
     FunctionValue,
 };
 use inkwell::FloatPredicate;
+use inkwell::OptimizationLevel::Aggressive;
 
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
     pub module: Module<'ctx>,
+    pub function_pass_manager: PassManager<FunctionValue<'ctx>>,
     pub named_values: HashMap<String, AnyValueEnum<'ctx>>,
 }
 
 impl<'ctx> CodeGen<'ctx> {
+    pub fn new(context: &'ctx Context, builder: Builder<'ctx>, module: Module<'ctx>) -> Self {
+        let function_pass_manager_builder = PassManagerBuilder::create();
+        function_pass_manager_builder.set_optimization_level(Aggressive);
+
+        let function_pass_manager = PassManager::create(&module);
+        // TODO: Look through the passes available to us.. there are a lot!
+        function_pass_manager_builder.populate_function_pass_manager(&function_pass_manager);
+        function_pass_manager.add_aggressive_inst_combiner_pass();
+        function_pass_manager.add_reassociate_pass();
+        function_pass_manager.add_new_gvn_pass();
+        function_pass_manager.add_cfg_simplification_pass();
+
+        function_pass_manager.initialize();
+
+        CodeGen {
+            builder,
+            context,
+            module,
+            function_pass_manager,
+            named_values: HashMap::new(),
+        }
+    }
+
     pub fn codegen(&mut self, expr: &Expr) -> Option<AnyValueEnum<'ctx>> {
         match &expr.kind {
             ExprKind::Number(num) => self.codegen_number(*num).as_any_value_enum().into(),
@@ -176,6 +202,7 @@ impl<'ctx> CodeGen<'ctx> {
                 self.builder.build_return(Some(&value));
 
                 if the_fn.verify(true) {
+                    self.function_pass_manager.run_on(&the_fn);
                     Some(the_fn)
                 } else {
                     unsafe { the_fn.delete() };
