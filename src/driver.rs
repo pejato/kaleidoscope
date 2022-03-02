@@ -79,7 +79,7 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed a function definition")?;
                 self.output.flush()?;
-                Ok(self.handle_function_codegen(&expr)?)
+                Ok(self.handle_function_codegen(&expr, false)?)
             }
             None => {
                 writeln!(
@@ -114,7 +114,7 @@ where
             Some(expr) => {
                 writeln!(self.output, "Parsed a top level expression")?;
                 self.output.flush()?;
-                Ok(self.handle_function_codegen(&expr)?)
+                Ok(self.handle_function_codegen(&expr, true)?)
             }
             None => {
                 writeln!(
@@ -130,7 +130,11 @@ where
 }
 
 impl Driver<'_> {
-    fn handle_function_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
+    fn handle_function_codegen(
+        &mut self,
+        expr: &Expr,
+        is_anonymous: bool,
+    ) -> Result<(), std::io::Error> {
         match &expr.kind {
             ExprKind::Function { prototype, body } => {
                 let result = self.codegen.codegen_function(prototype, body);
@@ -142,7 +146,7 @@ impl Driver<'_> {
                 writeln!(self.output, "{}", result_as_str)?;
                 self.output.flush()?;
 
-                if result.is_none() {
+                if !is_anonymous || result.is_none() {
                     return Ok(());
                 }
                 let result = result.unwrap();
