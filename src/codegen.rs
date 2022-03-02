@@ -151,15 +151,15 @@ impl<'ctx> CodeGen<'ctx> {
             _ => None,
         }?;
 
-        let the_fn = self
+        let mut the_fn = self
             .module
             .get_function(fn_name)
             .or_else(|| self.codegen_prototype(args, fn_name))?;
 
         // Checking to see if the fn has already been defined. This is how LLVM's Function.empty() works under the hood
         if the_fn.count_basic_blocks() > 0 {
-            eprintln!("Function {} cannot be redefined.", fn_name);
-            return None;
+            unsafe { the_fn.delete() };
+            the_fn = self.codegen_prototype(args, fn_name)?;
         }
 
         let bb = self.context.append_basic_block(the_fn, "entry");

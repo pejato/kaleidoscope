@@ -320,7 +320,7 @@ impl Parse for Parser {
     fn parse_top_level_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let expression = self.parse_expression(lexer)?;
         let prototype = ExprKind::Prototype {
-            name: "".to_string(),
+            name: "__anon".to_string(),
             args: vec![],
         };
 

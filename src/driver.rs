@@ -1,4 +1,5 @@
-use inkwell::{context::Context, values::AnyValue};
+use inkwell::{context::Context, values::AnyValue, OptimizationLevel};
+use scopeguard::defer;
 
 use crate::{
     ast::{Expr, ExprKind},
@@ -132,14 +133,43 @@ impl Driver<'_> {
     fn handle_function_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
         match &expr.kind {
             ExprKind::Function { prototype, body } => {
-                let result = self
-                    .codegen
-                    .codegen_function(prototype, body)
+                let result = self.codegen.codegen_function(prototype, body);
+
+                let result_as_str = result
                     .map_or("Failed to codegen function, continuing...".into(), |ir| {
                         ir.print_to_string().to_string()
                     });
-                writeln!(self.output, "{}", result)?;
+                writeln!(self.output, "{}", result_as_str)?;
                 self.output.flush()?;
+
+                if result.is_none() {
+                    return Ok(());
+                }
+                let result = result.unwrap();
+
+                let engine = self
+                    .codegen
+                    .module
+                    .create_jit_execution_engine(OptimizationLevel::Aggressive)
+                    .unwrap();
+
+                defer!(
+                    engine.remove_module(&self.codegen.module).unwrap();
+                );
+
+                let fun = unsafe {
+                    engine.get_function::<unsafe extern "C" fn() -> f64>(
+                        result.get_name().to_str().unwrap(),
+                    )
+                };
+
+                if fun.is_err() {
+                    return Ok(());
+                }
+
+                let fun = fun.unwrap();
+                let result = unsafe { fun.call() };
+                eprintln!("Evaluated to {}", result);
             }
             _ => {
                 writeln!(self.output, "Failed to codegen function, continuing...")?;
