@@ -383,3 +383,110 @@ fn test_codegen_function_two_calls() {
 
     assert_eq!(result.print_to_string().to_string(), expected);
 }
+
+#[test]
+fn test_codegen_if_then_else() {
+    let context = Context::create();
+    let mut generator = make_generator(&context);
+
+    let result = generator
+        .codegen(&Expr {
+            kind: ExprKind::Function {
+                prototype: Expr {
+                    kind: ExprKind::Prototype {
+                        name: "fib".into(),
+                        args: vec!["x".into()],
+                    },
+                }
+                .into(),
+                body: Expr {
+                    kind: ExprKind::If(IfVal {
+                        if_boolish_test: Expr {
+                            kind: ExprKind::Binary {
+                                operator: '<',
+                                lhs: Expr {
+                                    kind: ExprKind::Variable { name: "x".into() },
+                                }
+                                .into(),
+                                rhs: Expr {
+                                    kind: ExprKind::Number(2.0),
+                                }
+                                .into(),
+                            }
+                            .into(),
+                        }
+                        .into(),
+                        then: Expr {
+                            kind: ExprKind::Call {
+                                callee: "fib".into(),
+                                args: vec![Expr {
+                                    kind: ExprKind::Binary {
+                                        operator: '-',
+                                        lhs: Expr {
+                                            kind: ExprKind::Variable { name: "x".into() },
+                                        }
+                                        .into(),
+                                        rhs: Expr {
+                                            kind: ExprKind::Number(1.0),
+                                        }
+                                        .into(),
+                                    },
+                                }
+                                .into()],
+                            },
+                        }
+                        .into(),
+                        elves: Expr {
+                            kind: ExprKind::Call {
+                                callee: "fib".into(),
+                                args: vec![Expr {
+                                    kind: ExprKind::Binary {
+                                        operator: '+',
+                                        lhs: Expr {
+                                            kind: ExprKind::Variable { name: "x".into() },
+                                        }
+                                        .into(),
+                                        rhs: Expr {
+                                            kind: ExprKind::Number(1.0),
+                                        }
+                                        .into(),
+                                    },
+                                }
+                                .into()],
+                            },
+                        }
+                        .into(),
+                    }),
+                }
+                .into(),
+            },
+        })
+        .unwrap();
+
+    let result_string = result.print_to_string().to_string();
+    let expected_string = indoc!(
+        "
+        define double @fib(double %x) {
+        entry:
+          %cmptmp = fcmp ult double %x, 2.000000e+00
+          %booltmp = uitofp i1 %cmptmp to double
+          %comp = fcmp one double %booltmp, 0.000000e+00
+          br i1 %comp, label %then, label %else
+        
+        then:                                             ; preds = %entry
+          %subtmp = fsub double %x, 1.000000e+00
+          %call_tmp = call double @fib(double %subtmp)
+          br label %cont
+        
+        else:                                             ; preds = %entry
+          %addtmp = fadd double %x, 1.000000e+00
+          %call_tmp1 = call double @fib(double %addtmp)
+          br label %cont
+        
+        cont:                                             ; preds = %else, %then
+          %iftmp = phi double [ %call_tmp, %then ], [ %call_tmp1, %else ]
+          ret double %iftmp
+        }"
+    );
+    assert_eq!(result_string.trim(), expected_string);
+}

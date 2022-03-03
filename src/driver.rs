@@ -23,8 +23,11 @@ pub trait Drive<'ctx> {
     fn with_options(self, options: DriverOptions) -> Self;
 }
 
+#[derive(clap::Parser)]
 pub struct DriverOptions {
+    #[clap(long)]
     pub(crate) print_parses: bool,
+    #[clap(long)]
     pub(crate) print_ir: bool,
 }
 
@@ -100,6 +103,7 @@ where
             Some(expr) => {
                 if self.options.print_parses {
                     writeln!(self.output, "Parsed a function definition")?;
+                    writeln!(self.output, "{:#?}", expr)?;
                     self.output.flush()?;
                 }
                 Ok(self.handle_function_codegen(&expr, false)?)
@@ -121,6 +125,7 @@ where
             Some(expr) => {
                 if self.options.print_parses {
                     writeln!(self.output, "Parsed an extern")?;
+                    writeln!(self.output, "{:#?}", expr)?;
                     self.output.flush()?;
                 }
                 Ok(self.handle_prototype_codegen(&expr)?)
@@ -139,6 +144,7 @@ where
             Some(expr) => {
                 if self.options.print_parses {
                     writeln!(self.output, "Parsed a top level expression")?;
+                    writeln!(self.output, "{:#?}", expr)?;
                     self.output.flush()?;
                 }
                 Ok(self.handle_function_codegen(&expr, true)?)

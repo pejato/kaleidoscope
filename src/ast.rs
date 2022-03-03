@@ -2,6 +2,7 @@
 pub struct Expr {
     pub kind: ExprKind,
 }
+
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum ExprKind {
     Number(f64),

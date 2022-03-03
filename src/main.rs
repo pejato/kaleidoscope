@@ -15,31 +15,11 @@ mod test_utilities;
 
 use clap::Parser;
 
-#[derive(Parser, Debug)]
-#[clap(author)]
-struct Arguments {
-    #[clap(long)]
-    print_ir: Option<bool>,
-
-    #[clap(long)]
-    print_parse: Option<bool>,
-}
-
 fn main() -> Result<(), std::io::Error> {
-    let mut args = Arguments::parse();
-    if args.print_ir.is_none() {
-        args.print_ir = Some(false)
-    }
-    if args.print_parse.is_none() {
-        args.print_parse = Some(false)
-    }
-
+    let options = DriverOptions::parse();
     let context = Context::create();
     let mut driver =
-        Driver::new(Box::new(stdin()), Box::new(stdout()), &context).with_options(DriverOptions {
-            print_ir: args.print_ir.unwrap_or(false),
-            print_parses: args.print_ir.unwrap_or(false),
-        });
+        Driver::new(Box::new(stdin()), Box::new(stdout()), &context).with_options(options);
 
     driver.run()?;
     driver.dump_ir()?;
