@@ -142,9 +142,7 @@ fn test_codegen_call_with_gened_prototype() {
     let context = Context::create();
     let mut generator = make_generator(&context);
 
-    assert!(generator
-        .codegen_prototype(&["x".into(), "y".into()], "flint")
-        .is_some());
+    generator.codegen_prototype(&["x".into(), "y".into()], "flint");
 
     let callee = "flint";
     let args = [
@@ -215,7 +213,7 @@ fn test_codegen_fn_prototype() {
 
     let args = vec!["x".into(), "y".into()];
     let name = "Moonlight";
-    let result = generator.codegen_prototype(&args, name).unwrap();
+    let result = generator.codegen_prototype(&args, name);
 
     assert_eq!(result.get_params().len(), 2);
     assert!(result.get_type().get_return_type().unwrap().is_float_type());
