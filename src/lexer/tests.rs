@@ -239,3 +239,11 @@ fn test_get_token_integration_all_tokens() {
         _ => assert!(false, "Expected {:?} but got {:?}", EOF, result),
     }
 }
+
+#[test]
+fn test_lex_if_then_else() {
+    let mut lexer = Lexer::new("if then else".as_bytes());
+    assert_eq!(lexer.get_next_token(), &Token::If.into());
+    assert_eq!(lexer.get_next_token(), &Token::Then.into());
+    assert_eq!(lexer.get_next_token(), &Token::Else.into());
+}
