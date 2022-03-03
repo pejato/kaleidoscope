@@ -392,6 +392,7 @@ fn test_codegen_if_then_else() {
     let result = generator
         .codegen(&Expr {
             kind: ExprKind::Function {
+                // Prototype fib(x)
                 prototype: Expr {
                     kind: ExprKind::Prototype {
                         name: "fib".into(),
@@ -399,7 +400,9 @@ fn test_codegen_if_then_else() {
                     },
                 }
                 .into(),
+                // Body
                 body: Expr {
+                    // If x < 2
                     kind: ExprKind::If(IfVal {
                         if_boolish_test: Expr {
                             kind: ExprKind::Binary {
@@ -416,6 +419,7 @@ fn test_codegen_if_then_else() {
                             .into(),
                         }
                         .into(),
+                        // then fib(x-1)
                         then: Expr {
                             kind: ExprKind::Call {
                                 callee: "fib".into(),
@@ -436,6 +440,7 @@ fn test_codegen_if_then_else() {
                             },
                         }
                         .into(),
+                        // else fib(x+1)
                         elves: Expr {
                             kind: ExprKind::Call {
                                 callee: "fib".into(),
