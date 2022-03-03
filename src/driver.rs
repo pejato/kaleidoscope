@@ -22,11 +22,17 @@ pub trait Drive<'ctx> {
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error>;
 }
 
+pub struct DriverOptions {
+    print_parses: bool,
+    print_ir: bool,
+}
+
 pub struct Driver<'a> {
     parser: Parser,
     lexer: Lexer<Box<dyn Read>>,
     codegen: CodeGen<'a>,
     output: Box<dyn Write>,
+    options: DriverOptions,
 }
 
 impl<'ctx, 'a> Drive<'ctx> for Driver<'a>
@@ -45,6 +51,10 @@ where
                 module,
                 current_function: None,
                 named_values: HashMap::new(),
+            },
+            options: DriverOptions {
+                print_parses: false,
+                print_ir: false,
             },
             output,
         }
@@ -77,8 +87,10 @@ where
     fn handle_function_definition(&mut self) -> Result<(), std::io::Error> {
         match self.parser.parse_function_definition(&mut self.lexer) {
             Some(expr) => {
-                writeln!(self.output, "Parsed a function definition")?;
-                self.output.flush()?;
+                if self.options.print_parses {
+                    writeln!(self.output, "Parsed a function definition")?;
+                    self.output.flush()?;
+                }
                 Ok(self.handle_function_codegen(&expr, false)?)
             }
             None => {
@@ -96,8 +108,10 @@ where
     fn handle_extern(&mut self) -> Result<(), std::io::Error> {
         match self.parser.parse_extern(&mut self.lexer) {
             Some(expr) => {
-                writeln!(self.output, "Parsed an extern")?;
-                self.output.flush()?;
+                if self.options.print_parses {
+                    writeln!(self.output, "Parsed an extern")?;
+                    self.output.flush()?;
+                }
                 Ok(self.handle_prototype_codegen(&expr)?)
             }
             None => {
@@ -112,8 +126,10 @@ where
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error> {
         match self.parser.parse_top_level_expression(&mut self.lexer) {
             Some(expr) => {
-                writeln!(self.output, "Parsed a top level expression")?;
-                self.output.flush()?;
+                if self.options.print_parses {
+                    writeln!(self.output, "Parsed a top level expression")?;
+                    self.output.flush()?;
+                }
                 Ok(self.handle_function_codegen(&expr, true)?)
             }
             None => {
@@ -139,12 +155,14 @@ impl Driver<'_> {
             ExprKind::Function { prototype, body } => {
                 let result = self.codegen.codegen_function(prototype, body);
 
-                let result_as_str = result
-                    .map_or("Failed to codegen function, continuing...".into(), |ir| {
-                        ir.print_to_string().to_string()
-                    });
-                writeln!(self.output, "{}", result_as_str)?;
-                self.output.flush()?;
+                if self.options.print_ir {
+                    let result_as_str = result
+                        .map_or("Failed to codegen function, continuing...".into(), |ir| {
+                            ir.print_to_string().to_string()
+                        });
+                    writeln!(self.output, "{}", result_as_str)?;
+                    self.output.flush()?;
+                }
 
                 if !is_anonymous || result.is_none() {
                     return Ok(());
@@ -173,7 +191,7 @@ impl Driver<'_> {
 
                 let fun = fun.unwrap();
                 let result = unsafe { fun.call() };
-                eprintln!("Evaluated to {}", result);
+                eprintln!("Evaluated to {}\n", result);
             }
             _ => {
                 writeln!(self.output, "Failed to codegen function, continuing...")?;
@@ -186,14 +204,16 @@ impl Driver<'_> {
     fn handle_prototype_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
         match &expr.kind {
             ExprKind::Prototype { name, args } => {
-                let result = self
-                    .codegen
-                    .codegen_prototype(args, name)
-                    .map_or("Failed to codegen extern, continuing...".into(), |ir| {
-                        ir.print_to_string().to_string()
-                    });
-                writeln!(self.output, "{}", result)?;
-                self.output.flush()?;
+                if self.options.print_ir {
+                    let result = self
+                        .codegen
+                        .codegen_prototype(args, name)
+                        .map_or("Failed to codegen extern, continuing...".into(), |ir| {
+                            ir.print_to_string().to_string()
+                        });
+                    writeln!(self.output, "{}", result)?;
+                    self.output.flush()?;
+                }
             }
             _ => {
                 writeln!(self.output, "Failed to codegen extern, continuing...")?;
@@ -205,6 +225,9 @@ impl Driver<'_> {
     }
 
     pub fn dump_ir(&mut self) -> Result<(), std::io::Error> {
+        if !self.options.print_ir {
+            return Ok(());
+        }
         let llvm_string = self.codegen.module.print_to_string();
         let as_str = llvm_string
             .to_str()
