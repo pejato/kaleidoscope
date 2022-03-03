@@ -1,7 +1,8 @@
 use crate::{
-    ast::{Expr, ExprKind},
+    ast::{Expr, ExprKind, IfVal},
     environment::Environment,
     lexer::{Lex, Token},
+    option_ext::OptionExt,
 };
 
 pub trait Parse {
@@ -13,6 +14,7 @@ pub trait Parse {
         identifier: String,
         lexer: &mut L,
     ) -> Option<Expr>;
+    fn parse_if_then_else<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
     fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
     fn parse_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr>;
     fn parse_binary_op_rhs<L: Lex>(
@@ -125,6 +127,39 @@ impl Parse for Parser {
         Expr { kind }.into()
     }
 
+    fn parse_if_then_else<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
+        lexer.get_next_token().discard();
+        let maybe_test_expr = self.parse_expression(lexer)?;
+
+        // We've loaded if <expr> at this point
+        match lexer.current_token() {
+            Some(Token::Then) => (),
+            _ => return None,
+        }
+
+        lexer.get_next_token().discard();
+        let maybe_then_expr = self.parse_expression(lexer)?;
+
+        // Now we've loaded if <expr> then <expr>
+        match lexer.current_token() {
+            Some(Token::Else) => (),
+            _ => return None,
+        }
+
+        // Parse the last <expr>
+        lexer.get_next_token().discard();
+        let maybe_else_expr = self.parse_expression(lexer)?;
+
+        Expr {
+            kind: ExprKind::If(IfVal {
+                if_boolish_test: maybe_test_expr.into(),
+                then: maybe_then_expr.into(),
+                elves: maybe_else_expr.into(),
+            }),
+        }
+        .into()
+    }
+
     fn parse_primary_expr<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         match lexer.current_token() {
             Some(Token::Identifier(ident)) => {
@@ -132,6 +167,7 @@ impl Parse for Parser {
             }
             Some(Token::Number(_)) => self.parse_number_expr(lexer).into(),
             Some(Token::Misc('(')) => self.parse_paren_expr(lexer),
+            Some(Token::If) => self.parse_if_then_else(lexer),
             _ => self.log_error("unknown token when expecting an expression".into()),
         }
     }
@@ -186,7 +222,6 @@ impl Parse for Parser {
             };
         }
     }
-
     fn parse_function_prototype<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let func_name: Option<String> = match lexer.current_token() {
             Some(Token::Identifier(i)) => Some(i.clone()),
@@ -231,7 +266,7 @@ impl Parse for Parser {
                 Some(Token::Misc(')')) => (),
                 // TODO: The tutorial doesn't require (or allow?) commas between parameters, should change this here.
                 // Another argument may follow (we allow trailing commas)
-                Some(Token::Misc(',')) => lexer.get_next_token(),
+                Some(Token::Misc(',')) => lexer.get_next_token().discard(),
                 _ => {
                     return self.log_error(format!(
                         "Expected ',' or ')' in prototype,\n  got {:#?}",
@@ -285,7 +320,7 @@ impl Parse for Parser {
     fn parse_top_level_expression<L: Lex>(&mut self, lexer: &mut L) -> Option<Expr> {
         let expression = self.parse_expression(lexer)?;
         let prototype = ExprKind::Prototype {
-            name: "".to_string(),
+            name: "__anon".to_string(),
             args: vec![],
         };
 

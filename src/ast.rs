@@ -2,6 +2,7 @@
 pub struct Expr {
     pub kind: ExprKind,
 }
+
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum ExprKind {
     Number(f64),
@@ -25,4 +26,12 @@ pub enum ExprKind {
         prototype: Box<Expr>,
         body: Box<Expr>,
     },
+    If(IfVal),
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
+pub struct IfVal {
+    pub(crate) if_boolish_test: Box<Expr>,
+    pub(crate) then: Box<Expr>,
+    pub(crate) elves: Box<Expr>,
 }

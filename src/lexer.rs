@@ -11,6 +11,9 @@ pub enum Token {
     Extern,
     Identifier(String),
     Number(f64),
+    If,
+    Then,
+    Else,
     Misc(char),
 }
 
@@ -18,7 +21,7 @@ pub trait Lex {
     type Reader: Read;
 
     fn new(reader: Self::Reader) -> Self;
-    fn get_next_token(&mut self);
+    fn get_next_token(&mut self) -> &Option<Token>;
     fn current_token(&self) -> &Option<Token>;
 }
 
@@ -49,8 +52,9 @@ where
         }
     }
 
-    fn get_next_token(&mut self) {
+    fn get_next_token(&mut self) -> &Option<Token> {
         self.buffer = self.get_token();
+        &self.buffer
     }
 
     fn current_token(&self) -> &Option<Token> {
@@ -205,6 +209,9 @@ where
         match ident.as_str() {
             "def" => Token::Def,
             "extern" => Token::Extern,
+            "if" => Token::If,
+            "then" => Token::Then,
+            "else" => Token::Else,
             _ => Token::Identifier(ident),
         }
         .into()

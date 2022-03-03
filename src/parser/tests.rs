@@ -429,7 +429,7 @@ fn test_parse_top_level_expr_legal_basic() {
         kind: Function {
             prototype: Expr {
                 kind: Prototype {
-                    name: "".to_owned(),
+                    name: "__anon".to_owned(),
                     args: vec![],
                 },
             }
@@ -451,6 +451,25 @@ fn test_parse_top_level_expr_legal_basic() {
         },
     }
     .into();
+
+    assert_eq!(result, expected_result);
+}
+
+#[test]
+fn test_parse_if_then_else() {
+    let (mut parser, mut lexer) = setup_parser_lexer!("if x then 1 else 2");
+
+    let result = parser.parse_if_then_else(&mut lexer).unwrap();
+    let expected_result = Expr {
+        kind: If(IfVal {
+            if_boolish_test: Expr {
+                kind: Variable { name: "x".into() },
+            }
+            .into(),
+            then: Expr { kind: Number(1.0) }.into(),
+            elves: Expr { kind: Number(2.0) }.into(),
+        }),
+    };
 
     assert_eq!(result, expected_result);
 }
