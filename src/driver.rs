@@ -26,7 +26,7 @@ pub trait Drive<'ctx> {
 #[derive(clap::Parser)]
 pub struct DriverOptions {
     #[clap(long)]
-    pub(crate) print_parses: bool,
+    pub(crate) print_parse: bool,
     #[clap(long)]
     pub(crate) print_ir: bool,
 }
