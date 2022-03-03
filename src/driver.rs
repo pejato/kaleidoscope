@@ -20,11 +20,12 @@ pub trait Drive<'ctx> {
     fn handle_function_definition(&mut self) -> Result<(), std::io::Error>;
     fn handle_extern(&mut self) -> Result<(), std::io::Error>;
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error>;
+    fn with_options(self, options: DriverOptions) -> Self;
 }
 
 pub struct DriverOptions {
-    print_parses: bool,
-    print_ir: bool,
+    pub(crate) print_parses: bool,
+    pub(crate) print_ir: bool,
 }
 
 pub struct Driver<'a> {
@@ -39,6 +40,16 @@ impl<'ctx, 'a> Drive<'ctx> for Driver<'a>
 where
     'ctx: 'a,
 {
+    fn with_options(self, options: DriverOptions) -> Self {
+        Self {
+            parser: self.parser,
+            lexer: self.lexer,
+            codegen: self.codegen,
+            output: self.output,
+            options,
+        }
+    }
+
     fn new(input: Box<dyn Read>, output: Box<dyn Write>, context: &'ctx Context) -> Self {
         let builder = context.create_builder();
         let module = context.create_module("Kaleidoscope");
