@@ -429,7 +429,7 @@ fn test_parse_top_level_expr_legal_basic() {
         kind: Function {
             prototype: Expr {
                 kind: Prototype {
-                    name: "".to_owned(),
+                    name: "__anon".to_owned(),
                     args: vec![],
                 },
             }
