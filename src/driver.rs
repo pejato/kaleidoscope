@@ -9,10 +9,7 @@ use crate::{
     parser::{Parse, Parser},
 };
 
-use std::{
-    collections::HashMap,
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 
 pub trait Drive<'ctx> {
     fn new(input: Box<dyn Read>, output: Box<dyn Write>, context: &'ctx Context) -> Self;
@@ -59,17 +56,11 @@ where
         Driver {
             parser: Parser::new(),
             lexer: Lexer::new(input),
-            codegen: CodeGen {
-                builder,
-                context,
-                module,
-                current_function: None,
-                named_values: HashMap::new(),
-            },
             options: DriverOptions {
                 print_parse: false,
                 print_ir: false,
             },
+            codegen: CodeGen::new(context, builder, module),
             output,
         }
     }
