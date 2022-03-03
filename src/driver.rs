@@ -67,7 +67,7 @@ where
                 named_values: HashMap::new(),
             },
             options: DriverOptions {
-                print_parses: false,
+                print_parse: false,
                 print_ir: false,
             },
             output,
@@ -101,7 +101,7 @@ where
     fn handle_function_definition(&mut self) -> Result<(), std::io::Error> {
         match self.parser.parse_function_definition(&mut self.lexer) {
             Some(expr) => {
-                if self.options.print_parses {
+                if self.options.print_parse {
                     writeln!(self.output, "Parsed a function definition")?;
                     writeln!(self.output, "{:#?}", expr)?;
                     self.output.flush()?;
@@ -123,7 +123,7 @@ where
     fn handle_extern(&mut self) -> Result<(), std::io::Error> {
         match self.parser.parse_extern(&mut self.lexer) {
             Some(expr) => {
-                if self.options.print_parses {
+                if self.options.print_parse {
                     writeln!(self.output, "Parsed an extern")?;
                     writeln!(self.output, "{:#?}", expr)?;
                     self.output.flush()?;
@@ -142,7 +142,7 @@ where
     fn handle_top_level_expression(&mut self) -> Result<(), std::io::Error> {
         match self.parser.parse_top_level_expression(&mut self.lexer) {
             Some(expr) => {
-                if self.options.print_parses {
+                if self.options.print_parse {
                     writeln!(self.output, "Parsed a top level expression")?;
                     writeln!(self.output, "{:#?}", expr)?;
                     self.output.flush()?;
@@ -225,9 +225,8 @@ impl Driver<'_> {
                     let result = self
                         .codegen
                         .codegen_prototype(args, name)
-                        .map_or("Failed to codegen extern, continuing...".into(), |ir| {
-                            ir.print_to_string().to_string()
-                        });
+                        .print_to_string()
+                        .to_string();
                     writeln!(self.output, "{}", result)?;
                     self.output.flush()?;
                 }

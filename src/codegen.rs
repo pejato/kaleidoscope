@@ -41,7 +41,8 @@ impl<'ctx> CodeGen<'ctx> {
 
             ExprKind::Prototype { args, name } => self
                 .codegen_prototype(args, name)
-                .map(|val| val.as_any_value_enum()),
+                .as_any_value_enum()
+                .into(),
 
             ExprKind::Function { prototype, body } => self
                 .codegen_function(prototype, body)
@@ -110,7 +111,7 @@ impl<'ctx> CodeGen<'ctx> {
             .map(|val| val.into_float_value())
     }
 
-    pub fn codegen_prototype(&self, args: &[String], name: &str) -> Option<FunctionValue<'ctx>> {
+    pub fn codegen_prototype(&self, args: &[String], name: &str) -> FunctionValue<'ctx> {
         let param_types: Vec<BasicMetadataTypeEnum> = args
             .iter()
             .map(|_| self.context.f64_type().into())
@@ -121,6 +122,9 @@ impl<'ctx> CodeGen<'ctx> {
             .f64_type()
             .fn_type(param_types.as_slice(), false);
 
+        unsafe {
+            self.module.get_function(name).map(|old_fn| old_fn.delete());
+        }
         let the_fn = self
             .module
             .add_function(name, fn_type, Linkage::External.into());
@@ -129,7 +133,7 @@ impl<'ctx> CodeGen<'ctx> {
             param.set_name(arg);
         }
 
-        Some(the_fn)
+        the_fn
     }
 
     pub fn codegen_function(
@@ -142,17 +146,7 @@ impl<'ctx> CodeGen<'ctx> {
             _ => None,
         }?;
 
-        let mut the_fn = self
-            .module
-            .get_function(fn_name)
-            .or_else(|| self.codegen_prototype(args, fn_name))?;
-
-        // Checking to see if the fn has already been defined. This is how LLVM's Function.empty() works under the hood
-        if the_fn.count_basic_blocks() > 0 {
-            // Delete the old function in preparation of creating the new one
-            unsafe { the_fn.delete() };
-            the_fn = self.codegen_prototype(args, fn_name)?;
-        }
+        let the_fn = self.codegen_prototype(args, fn_name);
 
         let bb = self.context.append_basic_block(the_fn, "entry");
         self.builder.position_at_end(bb);
