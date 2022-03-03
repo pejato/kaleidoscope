@@ -149,6 +149,7 @@ impl<'ctx> CodeGen<'ctx> {
 
         // Checking to see if the fn has already been defined. This is how LLVM's Function.empty() works under the hood
         if the_fn.count_basic_blocks() > 0 {
+            // Delete the old function in preparation of creating the new one
             unsafe { the_fn.delete() };
             the_fn = self.codegen_prototype(args, fn_name)?;
         }
@@ -179,18 +180,23 @@ impl<'ctx> CodeGen<'ctx> {
 
         match self.codegen(body) {
             Some(value) => {
-                self.current_function = None;
+                if value.is_function_value() || value.is_array_value() {
+                    self.current_function = None;
+                    return None;
+                }
                 let value: BasicValueEnum = value.try_into().ok()?;
                 self.builder.build_return(Some(&value));
 
                 if the_fn.verify(true) {
                     Some(the_fn)
                 } else {
+                    self.current_function = None;
                     unsafe { the_fn.delete() };
                     None
                 }
             }
             None => {
+                // We may have created a function while recursing inside codegen and need to clear it, if so.
                 self.current_function = None;
                 unsafe { the_fn.delete() };
                 None
