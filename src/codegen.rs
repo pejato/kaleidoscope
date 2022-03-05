@@ -45,7 +45,7 @@ impl<'ctx> CodeGen<'ctx> {
             builder,
             context,
             module: RefCell::new(module),
-            function_pass_manager,
+            function_pass_manager: function_pass_manager,
             named_values: HashMap::new(),
             current_function: None,
         }
@@ -172,12 +172,12 @@ impl<'ctx> CodeGen<'ctx> {
             _ => None,
         }?;
 
-        let the_fn = self.codegen_prototype(args, fn_name);
-        if the_fn.count_basic_blocks() > 0 {
+        // Not the cleanest, perse. It would be better to add a tag to the function prototype
+        if self.module.borrow().get_function(&fn_name).is_some() && fn_name != "__anon" {
             eprintln!("Unable to redefine func {}", fn_name);
             return None;
         }
-
+        let the_fn = self.codegen_prototype(args, fn_name);
         let bb = self.context.append_basic_block(the_fn, "entry");
 
         self.builder.position_at_end(bb);
