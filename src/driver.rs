@@ -228,12 +228,9 @@ impl Driver<'_> {
     fn handle_prototype_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
         match &expr.kind {
             ExprKind::Prototype { name, args } => {
+                let result = self.codegen.codegen_prototype(args, name);
                 if self.options.print_ir {
-                    let result = self
-                        .codegen
-                        .codegen_prototype(args, name)
-                        .print_to_string()
-                        .to_string();
+                    let result = result.print_to_string().to_string();
                     writeln!(self.output, "{}", result)?;
                     self.output.flush()?;
                 }
