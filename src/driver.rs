@@ -1,4 +1,5 @@
 use inkwell::{context::Context, values::AnyValue, OptimizationLevel};
+use llvm_sys::support::LLVMAddSymbol;
 use scopeguard::defer;
 
 use crate::{
@@ -9,7 +10,10 @@ use crate::{
     parser::{Parse, Parser},
 };
 
-use std::io::{Read, Write};
+use std::{
+    ffi::c_void,
+    io::{Read, Write},
+};
 
 pub trait Drive<'ctx> {
     fn new(input: Box<dyn Read>, output: Box<dyn Write>, context: &'ctx Context) -> Self;
@@ -34,6 +38,16 @@ pub struct Driver<'a> {
     codegen: CodeGen<'a>,
     output: Box<dyn Write>,
     options: DriverOptions,
+}
+
+impl Driver<'_> {
+    fn shim_lib_functions() {
+        for func in &crate::library::PRINT_FNS {
+            let fn_name = func.name.as_ptr();
+            let fn_ptr = func.func_pointer as *mut c_void;
+            unsafe { LLVMAddSymbol(fn_name, fn_ptr) };
+        }
+    }
 }
 
 impl<'ctx, 'a> Drive<'ctx> for Driver<'a>
@@ -65,6 +79,8 @@ where
         }
     }
     fn run(&mut self) -> Result<(), std::io::Error> {
+        Self::shim_lib_functions();
+
         loop {
             write!(self.output, "ready> ")?;
             self.output.flush()?;
@@ -212,12 +228,9 @@ impl Driver<'_> {
     fn handle_prototype_codegen(&mut self, expr: &Expr) -> Result<(), std::io::Error> {
         match &expr.kind {
             ExprKind::Prototype { name, args } => {
+                let result = self.codegen.codegen_prototype(args, name);
                 if self.options.print_ir {
-                    let result = self
-                        .codegen
-                        .codegen_prototype(args, name)
-                        .print_to_string()
-                        .to_string();
+                    let result = result.print_to_string().to_string();
                     writeln!(self.output, "{}", result)?;
                     self.output.flush()?;
                 }

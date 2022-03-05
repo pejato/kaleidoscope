@@ -4,13 +4,14 @@ use driver::{Drive, Driver, DriverOptions};
 use inkwell::context::Context;
 use std::io::{stdin, stdout};
 
-pub mod ast;
-pub mod codegen;
-pub mod driver;
-pub mod environment;
-pub mod lexer;
-pub mod option_ext;
-pub mod parser;
+mod ast;
+mod codegen;
+mod driver;
+mod environment;
+mod lexer;
+mod library;
+mod option_ext;
+mod parser;
 mod test_utilities;
 
 use clap::Parser;

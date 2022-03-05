@@ -9,8 +9,8 @@ edition = "2021"
 scopeguard = "1.1.*"
 inkwell = { git = "https://github.com/TheDan64/inkwell", rev = "c0e13b7", features = ["llvm13-0"] }
 clap = { version = "*", features=["derive"] }
+llvm-sys = { version = "130.0.3" }
 
 [dev-dependencies]
 pretty_assertions = { version = "1.0.0" }
-llvm-sys = { version = "130.0.3" }
 indoc = { version = "1.0.3" }
