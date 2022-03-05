@@ -1,16 +1,18 @@
 #![feature(generic_associated_types)]
+#![feature(stdio_locked)]
 
 use driver::{Drive, Driver, DriverOptions};
 use inkwell::context::Context;
 use std::io::{stdin, stdout};
 
-pub mod ast;
-pub mod codegen;
+mod ast;
+mod codegen;
 pub mod driver;
-pub mod environment;
-pub mod lexer;
-pub mod option_ext;
-pub mod parser;
+mod environment;
+mod lexer;
+mod library;
+mod option_ext;
+mod parser;
 mod test_utilities;
 
 use clap::Parser;
