@@ -13,9 +13,13 @@ static PUTCHARD_NAME: &'static CStr = cstr!("putchard");
 #[no_mangle]
 pub extern "C" fn putchard(x: f64) -> f64 {
     let mut stderr = stderr_locked();
-    unsafe {
-        write!(stderr, "{}", x as u8 as char).unwrap_unchecked();
-        stderr.flush().unwrap_unchecked();
+    match write!(stderr, "{}", x as u8 as char).ok() {
+        Some(()) => (),
+        None => return 1.0,
+    }
+    match stderr.flush().ok() {
+        Some(()) => (),
+        None => return 1.0,
     }
 
     0.0
@@ -25,9 +29,13 @@ static PRINTD_NAME: &'static CStr = cstr!("printd");
 #[no_mangle]
 pub extern "C" fn printd(x: f64) -> f64 {
     let mut stderr = stderr_locked();
-    unsafe {
-        writeln!(stderr, "{}", x).unwrap_unchecked();
-        stderr.flush().unwrap_unchecked();
+    match writeln!(stderr, "{}", x).ok() {
+        Some(()) => (),
+        None => return 1.0,
+    }
+    match stderr.flush().ok() {
+        Some(()) => (),
+        None => return 1.0,
     }
 
     0.0
