@@ -7,7 +7,7 @@ use std::io::{stdin, stdout};
 
 mod ast;
 mod codegen;
-pub mod driver;
+mod driver;
 mod environment;
 mod lexer;
 mod library;
