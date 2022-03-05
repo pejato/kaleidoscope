@@ -150,7 +150,9 @@ impl<'ctx> CodeGen<'ctx> {
             .fn_type(param_types.as_slice(), false);
 
         unsafe {
-            self.module.get_function(name).map(|old_fn| old_fn.delete());
+            if let Some(old_fn) = self.module.get_function(name) {
+                old_fn.delete()
+            }
         }
         let the_fn = self
             .module
@@ -173,8 +175,12 @@ impl<'ctx> CodeGen<'ctx> {
             _ => None,
         }?;
 
+        // Not the cleanest, perse. It would be better to add a tag to the function prototype
+        if self.module.get_function(fn_name).is_some() && fn_name != "__anon" {
+            eprintln!("Unable to redefine func {}", fn_name);
+            return None;
+        }
         let the_fn = self.codegen_prototype(args, fn_name);
-
         let bb = self.context.append_basic_block(the_fn, "entry");
         self.builder.position_at_end(bb);
 
