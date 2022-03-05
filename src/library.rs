@@ -1,6 +1,6 @@
 use std::{
     ffi::CStr,
-    io::{stderr_locked, Write},
+    io::{stderr, Write},
 };
 
 macro_rules! cstr {
@@ -12,7 +12,7 @@ macro_rules! cstr {
 static PUTCHARD_NAME: &'static CStr = cstr!("putchard");
 #[no_mangle]
 pub extern "C" fn putchard(x: f64) -> f64 {
-    let mut stderr = stderr_locked();
+    let mut stderr = stderr();
     match write!(stderr, "{}", x as u8 as char).ok() {
         Some(()) => (),
         None => return 1.0,
@@ -28,7 +28,7 @@ pub extern "C" fn putchard(x: f64) -> f64 {
 static PRINTD_NAME: &'static CStr = cstr!("printd");
 #[no_mangle]
 pub extern "C" fn printd(x: f64) -> f64 {
-    let mut stderr = stderr_locked();
+    let mut stderr = stderr();
     match writeln!(stderr, "{}", x).ok() {
         Some(()) => (),
         None => return 1.0,

@@ -48,13 +48,9 @@ jobs:
           components: clippy
           override: true
     - uses: Swatinem/rust-cache@v1
-    - name: rustc version
-      run: rustc --version
-    - name: Rustup toolchain
-      run: rustup show
     - name: Build
       run: cargo build --verbose
-    - name: Run testss
+    - name: Run tests
       run: cargo test --verbose
     - uses: actions-rs/clippy-check@v1
       with:

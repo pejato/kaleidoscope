@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-#![feature(stdio_locked)]
 
 use driver::{Drive, Driver, DriverOptions};
 use inkwell::context::Context;
