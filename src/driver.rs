@@ -180,11 +180,12 @@ impl Driver<'_> {
                 let engine = self
                     .codegen
                     .module
+                    .borrow()
                     .create_jit_execution_engine(OptimizationLevel::Aggressive)
                     .unwrap();
 
                 defer!(
-                    engine.remove_module(&self.codegen.module).unwrap();
+                    engine.remove_module(&self.codegen.module.borrow()).unwrap();
                 );
 
                 let fun = unsafe {
@@ -235,7 +236,7 @@ impl Driver<'_> {
         if !self.options.print_ir {
             return Ok(());
         }
-        let llvm_string = self.codegen.module.print_to_string();
+        let llvm_string = self.codegen.module.borrow().print_to_string();
         let as_str = llvm_string
             .to_str()
             .ok()

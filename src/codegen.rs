@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use inkwell::builder::Builder;
@@ -19,7 +20,7 @@ use crate::ast::IfVal;
 pub struct CodeGen<'ctx> {
     pub context: &'ctx Context,
     pub builder: Builder<'ctx>,
-    pub module: Module<'ctx>,
+    pub module: RefCell<Module<'ctx>>,
     pub current_function: Option<FunctionValue<'ctx>>,
     pub function_pass_manager: PassManager<FunctionValue<'ctx>>,
     pub named_values: HashMap<String, AnyValueEnum<'ctx>>,
@@ -43,7 +44,7 @@ impl<'ctx> CodeGen<'ctx> {
         CodeGen {
             builder,
             context,
-            module,
+            module: RefCell::new(module),
             function_pass_manager,
             named_values: HashMap::new(),
             current_function: None,
@@ -115,7 +116,7 @@ impl<'ctx> CodeGen<'ctx> {
     }
 
     pub fn codegen_call(&mut self, callee: &str, args: &[Expr]) -> Option<FloatValue<'ctx>> {
-        let callee_fn = self.module.get_function(callee)?;
+        let callee_fn = self.module.borrow().get_function(callee)?;
 
         let callee_params = callee_fn.get_params();
         if callee_params.len() != args.len() {
@@ -149,11 +150,9 @@ impl<'ctx> CodeGen<'ctx> {
             .f64_type()
             .fn_type(param_types.as_slice(), false);
 
-        unsafe {
-            self.module.get_function(name).map(|old_fn| old_fn.delete());
-        }
         let the_fn = self
             .module
+            .borrow()
             .add_function(name, fn_type, Linkage::External.into());
 
         for (param, arg) in the_fn.get_param_iter().zip(args.iter()) {
@@ -174,8 +173,13 @@ impl<'ctx> CodeGen<'ctx> {
         }?;
 
         let the_fn = self.codegen_prototype(args, fn_name);
+        if the_fn.count_basic_blocks() > 0 {
+            eprintln!("Unable to redefine func {}", fn_name);
+            return None;
+        }
 
         let bb = self.context.append_basic_block(the_fn, "entry");
+
         self.builder.position_at_end(bb);
 
         self.named_values.clear();
